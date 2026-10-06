@@ -1,8 +1,10 @@
+import { demoStorageKey } from "../../../config/demoData";
+
 import type { AuthUser } from "../types/authTypes";
 
 // TEMPORARY: the dummy "session" lives in localStorage so a page reload keeps
 // the user logged in, like the real cookie-based session will.
-const SESSION_KEY = "pms-dummy-session";
+const SESSION_KEY = demoStorageKey("session");
 
 export function readSession(): AuthUser | null {
   try {

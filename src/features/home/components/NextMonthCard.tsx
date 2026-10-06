@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { ProgressBar } from "../../../components/ui/ProgressBar";
+import { ROUTES } from "../../../lib/routes";
 import { cn } from "../../../utils/cn";
 import { addMonths, formatMonth, getCurrentMonth } from "../../../utils/month";
 import { useMonthOverview } from "../../calendar/hooks/useMonthOverview";
@@ -44,6 +45,18 @@ export function NextMonthCard() {
           >
             Try again
           </button>
+        </p>
+      );
+    }
+
+    if (rows.length === 0) {
+      return (
+        <p className="text-sm text-muted-foreground">
+          No client has a plan for this month yet. Add one under{" "}
+          <Link to={ROUTES.clients} className="underline underline-offset-2">
+            Clients
+          </Link>
+          .
         </p>
       );
     }

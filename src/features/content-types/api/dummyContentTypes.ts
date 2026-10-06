@@ -1,3 +1,4 @@
+import { demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 
 import type { ContentType } from "../types/contentTypeTypes";
@@ -5,7 +6,9 @@ import type { ContentType } from "../types/contentTypeTypes";
 // TEMPORARY: stands in for the content_types table of the FastAPI backend.
 // Delete this file once the real API is connected.
 
-const STORAGE_KEY = "pms-dummy-content-types";
+// The six everyday types are kept in the empty start too: they are settings, not
+// sample data, and a client plan needs them
+const STORAGE_KEY = demoStorageKey("content-types");
 const MAX_NAME_LENGTH = 40;
 
 interface State {

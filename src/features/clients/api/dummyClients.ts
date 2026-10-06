@@ -1,3 +1,4 @@
+import { DEMO_DATA_MODE, demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { getCurrentMonth, isValidMonth } from "../../../utils/month";
 import { findContentType } from "../../content-types/api/dummyContentTypes";
@@ -20,7 +21,7 @@ import type {
 // from those rows, so changing the budget from December leaves earlier
 // months, and the reports built on them, exactly as they were.
 
-const STORAGE_KEY = "pms-dummy-clients";
+const STORAGE_KEY = demoStorageKey("clients");
 const MAX_NAME_LENGTH = 100;
 const MAX_NOTES_LENGTH = 500;
 const MAX_COUNT = 999;
@@ -49,6 +50,11 @@ interface State {
 // Content type ids follow the seed list in dummyContentTypes.ts:
 // 1 Poster, 2 Reel, 3 Story, 4 Carousel, 5 Video, 6 3D
 function buildSeed(): State {
+  // The empty start: no clients yet
+  if (DEMO_DATA_MODE === "empty") {
+    return { clients: [], planRows: [], nextClientId: 1 };
+  }
+
   const clients: ClientRow[] = [
     {
       id: 1,

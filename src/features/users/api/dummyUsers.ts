@@ -1,3 +1,4 @@
+import { DEMO_DATA_MODE, demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { can } from "../../../lib/permissions";
 import { isValidEmail, normalizeEmail } from "../../../utils/email";
@@ -19,7 +20,7 @@ import type {
 // table, the way they will read the real one. Delete this file once the real
 // API is connected.
 
-const STORAGE_KEY = "pms-dummy-users";
+const STORAGE_KEY = demoStorageKey("users");
 const MAX_NAME_LENGTH = 80;
 const MAX_LIST_LIMIT = 100;
 
@@ -48,6 +49,19 @@ function buildSeed(): State {
     role: UserRole,
     team_id: number | null,
   ): UserRow => ({ id, name, email, role, team_id, is_active: true, created_at: now });
+
+  // The empty start: just the four people to try the roles with
+  if (DEMO_DATA_MODE === "empty") {
+    return {
+      users: [
+        row(1, "George", "george@globosoft.example", "admin", null),
+        row(2, "Ramseena", "ramseena@globosoft.example", "member", TEAMS.marketing.id),
+        row(3, "Noufal", "noufal@globosoft.example", "member", TEAMS.design.id),
+        row(4, "Deepak", "deepak@globosoft.example", "member", TEAMS.marketing.id),
+      ],
+      nextId: 5,
+    };
+  }
 
   return {
     // The first three are the demo accounts on the sign-in screen. The designers

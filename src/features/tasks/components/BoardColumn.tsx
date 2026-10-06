@@ -31,6 +31,8 @@ interface BoardColumnProps {
   // The card whose move is being saved, if any
   busyTaskId: number | undefined;
   onMove: (task: Task) => void;
+  // Opens a card's details
+  onOpen: (task: Task) => void;
 }
 
 // One stage of the board with the cards that are in it
@@ -43,6 +45,7 @@ export function BoardColumn({
   getMoves,
   busyTaskId,
   onMove,
+  onOpen,
 }: BoardColumnProps) {
   const headingId = useId();
 
@@ -107,6 +110,7 @@ export function BoardColumn({
                         dragHandleProps={dragProvided.dragHandleProps}
                         isDragging={dragSnapshot.isDragging}
                         onMove={canMove ? onMove : undefined}
+                        onOpen={onOpen}
                         busy={isBusy}
                       />
                     </div>

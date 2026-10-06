@@ -1,3 +1,4 @@
+import { DEMO_DATA_MODE, demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { can } from "../../../lib/permissions";
 import { getTodayIst, isValidIsoDate } from "../../../utils/date";
@@ -45,7 +46,7 @@ import type {
 // file once the real API is connected. It reads the signed-in user from the
 // dummy session, the way the backend will read it from the session cookie.
 
-const STORAGE_KEY = "pms-dummy-tasks";
+const STORAGE_KEY = demoStorageKey("tasks");
 const MAX_TITLE_LENGTH = 120;
 const MAX_CONTENT_LENGTH = 5000;
 const MAX_MONTHS_AHEAD = 24;
@@ -202,6 +203,19 @@ function seedMoment(id: number, now: Date): Date {
 }
 
 function buildSeed(): State {
+  // The empty start: no cards, history or notifications yet
+  if (DEMO_DATA_MODE === "empty") {
+    return {
+      tasks: [],
+      nextId: 1,
+      nextReviewId: 1,
+      events: [],
+      nextEventId: 1,
+      notifications: [],
+      nextNotificationId: 1,
+    };
+  }
+
   const month = getCurrentMonth();
   const nextMonth = addMonths(month, 1);
   const nowDate = new Date();

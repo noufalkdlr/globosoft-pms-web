@@ -6,6 +6,7 @@ import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { cn } from "../../../utils/cn";
+import { isFromInteractiveElement } from "../../../utils/clipboard";
 import { formatShortDate } from "../../../utils/date";
 import { formatMonth } from "../../../utils/month";
 import { isLate, isOverdue, isSafeLink } from "../lib/taskDates";
@@ -23,6 +24,8 @@ interface BoardCardProps {
   isDragging: boolean;
   // Opens "Move to…". Omitted when this person cannot move the card.
   onMove?: (task: Task) => void;
+  // Opens the card's details: its full content, deadline, designer and more
+  onOpen: (task: Task) => void;
   // True while a move of this card is being saved
   busy: boolean;
 }
@@ -34,6 +37,7 @@ export function BoardCard({
   dragHandleProps,
   isDragging,
   onMove,
+  onOpen,
   busy,
 }: BoardCardProps) {
   const late = isLate(task, boardMonth);
@@ -47,8 +51,15 @@ export function BoardCard({
 
   return (
     <GlassCard
+      // A click anywhere on the card opens it, except on the controls inside
+      // (drag handle, links, buttons). Keyboard users use the title button.
+      onClick={(event) => {
+        if (!isFromInteractiveElement(event.target)) {
+          onOpen(task);
+        }
+      }}
       className={cn(
-        "flex flex-col gap-2.5 p-3.5",
+        "flex cursor-pointer flex-col gap-2.5 p-3.5",
         isDragging && "ring-2 ring-brand/70 shadow-brand-glow",
         busy && "opacity-70",
       )}
@@ -78,7 +89,15 @@ export function BoardCard({
         )}
       </div>
 
-      <h3 className="line-clamp-2 text-sm font-medium">{task.title}</h3>
+      <h3 className="text-sm font-medium">
+        <button
+          type="button"
+          onClick={() => onOpen(task)}
+          className="line-clamp-2 w-full text-left hover:underline focus-visible:underline"
+        >
+          {task.title}
+        </button>
+      </h3>
 
       {note && (
         <div className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs">

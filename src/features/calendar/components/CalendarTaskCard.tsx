@@ -3,6 +3,7 @@ import { Pencil, Trash2, UserPlus } from "lucide-react";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { isFromInteractiveElement } from "../../../utils/clipboard";
 import { formatShortDate } from "../../../utils/date";
 import { isOverdue } from "../../tasks/lib/taskDates";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
@@ -25,6 +26,8 @@ interface CalendarTaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onAssign: (task: Task) => void;
+  // Opens the card's details: its full content and more
+  onOpen: (task: Task) => void;
 }
 
 export function CalendarTaskCard({
@@ -36,6 +39,7 @@ export function CalendarTaskCard({
   onEdit,
   onDelete,
   onAssign,
+  onOpen,
 }: CalendarTaskCardProps) {
   const overdue = isOverdue(task, today);
 
@@ -45,9 +49,26 @@ export function CalendarTaskCard({
   const showAssign = canAssign && isChangeable;
 
   return (
-    <GlassCard className="flex h-full flex-col gap-3 p-4">
+    <GlassCard
+      // A click anywhere on the card opens it, except on the buttons inside.
+      // Keyboard users use the title button.
+      onClick={(event) => {
+        if (!isFromInteractiveElement(event.target)) {
+          onOpen(task);
+        }
+      }}
+      className="flex h-full cursor-pointer flex-col gap-3 p-4"
+    >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-2 font-medium">{task.title}</h3>
+        <h3 className="font-medium">
+          <button
+            type="button"
+            onClick={() => onOpen(task)}
+            className="line-clamp-2 w-full text-left hover:underline focus-visible:underline"
+          >
+            {task.title}
+          </button>
+        </h3>
         <Badge variant={STATUS_VARIANT[task.status]} className="shrink-0">
           {STATUS_LABEL[task.status]}
         </Badge>

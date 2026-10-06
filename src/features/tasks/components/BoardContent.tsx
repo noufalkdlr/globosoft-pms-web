@@ -26,6 +26,7 @@ import { BoardColumn, type DropState } from "./BoardColumn";
 import { MoveDialog } from "./MoveDialog";
 import { RejectDialog } from "./RejectDialog";
 import { SubmitDialog } from "./SubmitDialog";
+import { TaskDetailsDialog } from "./TaskDetailsDialog";
 
 import type { Task, TaskStatus } from "../types/taskTypes";
 
@@ -91,6 +92,9 @@ export function BoardContent() {
   const changeStatus = useChangeTaskStatus();
 
   const [dialog, setDialog] = useState<ActiveDialog | null>(null);
+  // The card whose details are open. Kept as an id, so the details follow the
+  // card when it is updated or moved while open.
+  const [detailsId, setDetailsId] = useState<number | null>(null);
   // The card being dragged, so every column can say whether it accepts it
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
@@ -109,6 +113,9 @@ export function BoardContent() {
           ? { id: clientId, name: "Selected client" }
           : undefined))
       : undefined;
+
+  const detailsTask =
+    detailsId === null ? undefined : tasks.find((task) => task.id === detailsId);
 
   const getMoves = (task: Task) => getAllowedMoves(user, task);
   const allowedMoves = draggedTask ? getMoves(draggedTask) : [];
@@ -225,6 +232,7 @@ export function BoardContent() {
                 getMoves={getMoves}
                 busyTaskId={busyTaskId}
                 onMove={(task) => setDialog({ kind: "move", task })}
+                onOpen={(task) => setDetailsId(task.id)}
               />
             ))}
           </div>
@@ -284,6 +292,10 @@ export function BoardContent() {
       </div>
 
       <div className="mt-6">{renderBoard()}</div>
+
+      {detailsTask && (
+        <TaskDetailsDialog task={detailsTask} onClose={() => setDetailsId(null)} />
+      )}
 
       {dialog?.kind === "move" && (
         <MoveDialog

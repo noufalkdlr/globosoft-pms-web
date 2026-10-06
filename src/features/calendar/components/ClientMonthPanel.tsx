@@ -14,6 +14,7 @@ import { toast } from "../../../stores/toastStore";
 import { getTodayIst } from "../../../utils/date";
 import { formatMonth, getCurrentMonth } from "../../../utils/month";
 import { AssignDialog } from "../../tasks/components/AssignDialog";
+import { TaskDetailsDialog } from "../../tasks/components/TaskDetailsDialog";
 import { useDeleteTask } from "../../tasks/hooks/useDeleteTask";
 import { CalendarTaskCard } from "./CalendarTaskCard";
 import { CardFormDialog, type CardTypeOption } from "./CardFormDialog";
@@ -63,9 +64,12 @@ export function ClientMonthPanel({
   const [formTarget, setFormTarget] = useState<Task | "new" | null>(null);
   const [assignTarget, setAssignTarget] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
+  // The card whose details are open, kept as an id so it follows updates
+  const [detailsId, setDetailsId] = useState<number | null>(null);
 
   const today = getTodayIst();
   const tasks = tasksQuery.data?.items ?? [];
+  const detailsTask = detailsId === null ? undefined : tasks.find((task) => task.id === detailsId);
 
   // Cards can only be written for the types the client's plan asks for
   const typeOptions: CardTypeOption[] = overview.types
@@ -140,6 +144,7 @@ export function ClientMonthPanel({
               onEdit={setFormTarget}
               onDelete={setDeleteTarget}
               onAssign={setAssignTarget}
+              onOpen={(opened) => setDetailsId(opened.id)}
             />
           </li>
         ))}
@@ -214,6 +219,10 @@ export function ClientMonthPanel({
           task={formTarget === "new" ? null : formTarget}
           onClose={() => setFormTarget(null)}
         />
+      )}
+
+      {detailsTask && (
+        <TaskDetailsDialog task={detailsTask} onClose={() => setDetailsId(null)} />
       )}
 
       {assignTarget && (

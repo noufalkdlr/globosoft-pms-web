@@ -1,3 +1,4 @@
+import { DEMO_DATA_MODE } from "../../../config/demoData";
 import { findAccountByEmail } from "../../users/api/dummyUsers";
 
 import type { AuthUser } from "../types/authTypes";
@@ -15,11 +16,19 @@ export { clearSession, readSession, writeSession } from "./dummySession";
 
 // The accounts offered by the demo "Choose an account" screen. Anyone else an
 // admin adds can sign in with "Use another account" by typing their address.
-export const DEMO_ACCOUNTS: Array<Pick<AuthUser, "id" | "name" | "email">> = [
-  { id: 1, name: "Admin Demo", email: "admin.demo@gmail.com" },
-  { id: 2, name: "Marketing Demo", email: "marketing.demo@gmail.com" },
-  { id: 3, name: "Designer Demo", email: "designer.demo@gmail.com" },
-];
+export const DEMO_ACCOUNTS: Array<Pick<AuthUser, "id" | "name" | "email">> =
+  DEMO_DATA_MODE === "empty"
+    ? [
+        { id: 1, name: "George", email: "george@globosoft.example" },
+        { id: 2, name: "Ramseena", email: "ramseena@globosoft.example" },
+        { id: 4, name: "Deepak", email: "deepak@globosoft.example" },
+        { id: 3, name: "Noufal", email: "noufal@globosoft.example" },
+      ]
+    : [
+        { id: 1, name: "Admin Demo", email: "admin.demo@gmail.com" },
+        { id: 2, name: "Marketing Demo", email: "marketing.demo@gmail.com" },
+        { id: 3, name: "Designer Demo", email: "designer.demo@gmail.com" },
+      ];
 
 // The result of looking a Google account up in the users table:
 // - "unknown": never added by an admin
