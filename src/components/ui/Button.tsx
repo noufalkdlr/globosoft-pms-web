@@ -13,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const VARIANT: Record<Variant, string> = {
   // Primary action with a red glow
   brand:
-    "bg-brand text-brand-foreground shadow-[0_0_24px_rgb(225_29_46/0.45)] hover:shadow-[0_0_32px_rgb(225_29_46/0.65)]",
+    "bg-brand text-brand-foreground shadow-brand-glow hover:shadow-brand-glow-strong",
   // Secondary action on a glass surface
   glass: "glass text-foreground hover:bg-white/10",
   // Low-emphasis action

@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes } from "react";
 import { cn } from "../../utils/cn";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -7,8 +7,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({ label, error, id, className, ...props }: InputProps) {
-  // Link the label to the input; fall back to name, then label text
-  const inputId = id ?? props.name ?? label;
+  // Unique id per instance so the label always links to the right input
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
 
   return (
     <div className="space-y-1.5">

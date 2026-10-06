@@ -1,17 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #1c1c1e; /* Apple Music പോലെ charcoal, pure black അല്ല */
+  --color-background: #1c1c1e; /* soft charcoal like Apple Music, not pure black */
   --color-surface: #242426;
   --color-foreground: #f5f5f7;
   --color-muted-foreground: #a1a1a6;
   --color-border: rgb(255 255 255 / 0.08);
 
-  --color-brand: #e11d2e; /* ലോഗോയുടെ കൃത്യമായ ചുവപ്പ് hex ഇവിടെ ഇടുക */
+  --color-brand: #e11d2e; /* replace with the exact red from the company logo */
   --color-brand-foreground: #ffffff;
 
   --color-success: #30d158;
   --color-destructive: #ff453a;
+
+  /* Brand glows derive from --color-brand, so changing the brand color updates them too */
+  --shadow-brand-glow: 0 0 24px
+    color-mix(in srgb, var(--color-brand) 45%, transparent);
+  --shadow-brand-glow-strong: 0 0 32px
+    color-mix(in srgb, var(--color-brand) 65%, transparent);
 
   --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -26,7 +32,7 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Apple-style glass: blur + അർദ്ധസുതാര്യത + മുകളിൽ വെളിച്ചം വീഴുന്ന വര */
+/* Apple-style glass: blur + translucency + a light edge highlight on top */
 @utility glass {
   background: linear-gradient(
     180deg,

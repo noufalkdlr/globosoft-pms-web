@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { GlowBackground } from "../../../components/layout/GlowBackground";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { Input } from "../../../components/ui/Input";
 import { Button } from "../../../components/ui/Button";
@@ -13,11 +14,8 @@ export function LoginContent() {
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden p-6">
-      {/* Large, soft red glow spreading from the top */}
-      <div className="pointer-events-none absolute -top-64 left-1/2 h-[640px] w-[820px] -translate-x-1/2 rounded-full bg-brand/30 blur-[200px]" />
-
-      <GlassCard className="relative w-full max-w-sm">
+    <GlowBackground className="grid place-items-center p-6">
+      <GlassCard className="w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Welcome back</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Sign in to Globosoft PMS
@@ -45,6 +43,6 @@ export function LoginContent() {
           </Button>
         </form>
       </GlassCard>
-    </div>
+    </GlowBackground>
   );
 }
