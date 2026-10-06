@@ -2,7 +2,7 @@ import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { can } from "../../../lib/permissions";
 import { isValidIsoDate } from "../../../utils/date";
 import { addMonths, getCurrentMonth, isValidMonth } from "../../../utils/month";
-import { readSession } from "../../auth/api/dummyAuth";
+import { readSession } from "../../auth/api/dummySession";
 import {
   findClientRow,
   getPlanForMonth,

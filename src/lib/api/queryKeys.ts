@@ -1,5 +1,6 @@
 import type { ClientListParams } from "../../features/clients/types/clientTypes";
 import type { TaskListParams } from "../../features/tasks/types/taskTypes";
+import type { UserListParams } from "../../features/users/types/userTypes";
 
 // All TanStack Query keys in one place. A mutation invalidates the broad key
 // (e.g. queryKeys.clients.all) and every list or detail under it refetches.
@@ -19,7 +20,14 @@ export const queryKeys = {
     all: ["tasks"] as const,
     list: (params: TaskListParams) => ["tasks", "list", params] as const,
   },
+  // Everything under "users", the admin list and the assignable list alike:
+  // adding or changing a person refetches both
   users: {
+    all: ["users"] as const,
+    list: (params: UserListParams) => ["users", "list", params] as const,
     assignable: ["users", "assignable"] as const,
+  },
+  teams: {
+    all: ["teams"] as const,
   },
 };

@@ -1,6 +1,6 @@
 import type { GoogleLoginRequest, LoginResponse } from "../types/authTypes";
 import { fakeApiError, wait } from "../../../lib/api/dummyHelpers";
-import { resolveDummyUser, writeSession } from "./dummyAuth";
+import { lookupAccount, writeSession } from "./dummyAuth";
 
 // DUMMY IMPLEMENTATION. In the dummy flow `credential` is simply the chosen
 // account's email. When the FastAPI backend is ready, replace the body with:
@@ -12,16 +12,23 @@ export async function googleAuthApi(
 ): Promise<LoginResponse> {
   await wait(700);
 
-  const user = resolveDummyUser(payload.credential);
+  const account = lookupAccount(payload.credential);
 
-  if (!user) {
+  if (account.status === "unknown") {
     throw fakeApiError(
       403,
       "Your account hasn't been added yet. Ask an admin to add you.",
     );
   }
 
-  writeSession(user);
+  if (account.status === "inactive") {
+    throw fakeApiError(
+      403,
+      "Your account has been deactivated. Ask an admin if this is a mistake.",
+    );
+  }
 
-  return { user };
+  writeSession(account.user);
+
+  return { user: account.user };
 }

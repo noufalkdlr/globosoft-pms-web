@@ -64,6 +64,11 @@ and `can_receive_tasks` (members of the team can be given cards: the Design team
 
 `200` `User` for the current session, `401` without one. Called on app start.
 
+It returns the person **as saved now**, not as they were when they signed in: a role or
+team change by an admin reaches them on their next load. A person who was deactivated
+gets `401` (and every other endpoint refuses them too, at once, not only at the next
+sign-in).
+
 ### `POST /auth/logout`
 
 Clears the session cookie. `204`.
@@ -212,6 +217,87 @@ team has `can_receive_tasks`. Used by the "Assign to" dropdowns.
 ```
 
 Declare this route before `/users/{id}`, or `assignable` is read as an id.
+
+### Users (admin)
+
+The Users screen. Everything here is for admins only: `401` without a session (or for
+a deactivated person), `403` `"Only admins can manage users."` for anyone else. Who is
+asking is read from the saved users table, not from the token's copy of the person: an
+admin who was demoted a moment ago is refused at once.
+
+`UserRecord`:
+
+```json
+{
+  "id": 11,
+  "name": "Anu Mathew",
+  "email": "anu.mathew@gmail.com",
+  "role": "member",
+  "team": { "id": 2, "name": "Design" },
+  "is_active": true,
+  "created_at": "2026-10-06T09:00:00Z"
+}
+```
+
+`role` is `admin` or `member`. `team` is `null` for admins and set for members.
+`is_active: false` means deactivated: they cannot sign in, but the account and every card
+or review that mentions them stay. People are never deleted.
+
+#### `GET /teams`
+
+Admin only. `200` `Team[]` with the permission flags (`can_manage_clients`,
+`can_create_content`, `can_assign`, `can_review`, `can_receive_tasks`). The flags are seed
+data for now; a screen to change them comes later (`PATCH /teams/{id}/permissions`).
+
+#### `GET /users`
+
+Query: `search` (part of the name or the email), `role`, `team_id`, `is_active`, `limit`
+(default 50, max 100), `offset`. `200` paginated `UserRecord`, sorted by name.
+
+#### `POST /users`
+
+```json
+{ "name": "Anu Mathew", "email": "Anu.Mathew@gmail.com", "role": "member", "team_id": 2 }
+```
+
+`201` `UserRecord`. The person signs in with that Google account. No password.
+
+- `422` the name is empty or over 80 characters, the email is not an address, `role` is not
+  `admin` or `member`, a member has no team (`"Choose a team for this person."`), the team
+  does not exist, or an admin was given a team (`"Admins don't belong to a team."`).
+- `409` `"That email is already added."` Compare emails the way Gmail does (below), so
+  `Anu.Mathew@gmail.com` and `anumathew+pms@gmail.com` are the same person.
+
+**Email rule (also used at sign-in).** Store the address in lower case, as typed. To
+compare two addresses, normalise both: lower case; and for `gmail.com` / `googlemail.com`,
+remove the dots and anything after a `+` in the part before the `@`. Keep a normalised
+copy of the address with a unique index.
+
+#### `PATCH /users/{id}`
+
+Any of `name`, `email`, `role`, `team_id`, `is_active`. `200` `UserRecord`. Checks, in this
+order:
+
+1. `404` no such user.
+2. `422` the same field rules as `POST`. Changing a member to admin clears the team;
+   changing an admin to member needs a `team_id` in the same request.
+3. `409` `"There must be at least one active admin."` if the change would remove the last
+   active admin (demoting them or deactivating them). This is a safety net: the next
+   rule already stops people changing themselves, so only a mistake elsewhere can reach it.
+4. `409` on yourself: `"You can't change your own role."`, `"You can't deactivate your own
+   account."`, `"You can't change your own email."` Nobody can lock themselves out.
+5. `409` `"That email is already added."` (not counting this same person).
+
+#### Sign-in and deactivated people
+
+`POST /auth/google` looks the person up with the email rule above and answers `403` with
+one of two messages: `"Your account hasn't been added yet. Ask an admin to add you."` (no
+such person) or `"Your account has been deactivated. Ask an admin if this is a mistake."`
+(found, but `is_active` is false).
+
+When someone is deactivated, their open cards stay assigned to them. The Users screen warns
+the admin ("They still have 3 unfinished cards") using `GET /tasks?assigned_to=`.
+A deactivated designer no longer appears in `GET /users/assignable`.
 
 ## Cards (tasks)
 
@@ -457,3 +543,18 @@ was never written.
   latest review and keeps the rejection in the history.
 - Cards: `include_late` adds earlier months' unfinished cards and never earlier `done` ones.
 - Cards: `limit` above 500 is capped at 500; `total` still reports the full count.
+- Users: every `/users` and `/teams` endpoint is `401` without a session, `403` for a member,
+  and `401` for an admin who was deactivated a moment ago (the saved row decides, not the token).
+- Users: create stores the email in lower case; a duplicate is `409` even when it differs only by
+  case, by dots or by a `+tag` on a Gmail address, but two different non-Gmail addresses that
+  differ only by dots are different people.
+- Users: a member needs a valid team, an admin must have none; changing role clears or demands
+  the team; list filters (`search`, `role`, `team_id`, `is_active`) and paging work together.
+- Users: nobody can change their own role or email or deactivate themselves (`409`); the last
+  active admin cannot be demoted or deactivated (`409`); the email of someone else can be changed
+  but not to one that is taken.
+- Sign-in: an unknown email is `403`, a deactivated one is `403` with its own message, an added one
+  works with different case, dots and `+tag`; `/auth/me` returns the saved role and team and `401`
+  after deactivation.
+- Assignable users: new Design members appear, deactivated ones and people who moved to Marketing
+  disappear, and cards keep showing the name of someone who was deactivated.

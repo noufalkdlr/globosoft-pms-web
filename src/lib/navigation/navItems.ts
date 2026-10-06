@@ -4,6 +4,7 @@ import {
   House,
   LayoutDashboard,
   SquareKanban,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: LayoutDashboard,
     roles: ["admin"],
   },
+  { label: "Users", href: ROUTES.admin.users, icon: Users, roles: ["admin"] },
 ];
 
 export function getNavItems(user: AuthUser): NavItem[] {

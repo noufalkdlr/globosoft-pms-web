@@ -12,6 +12,7 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
 import { RequirePermission } from "./routes/RequirePermission";
 import { RequireRole } from "./routes/RequireRole";
+import { UsersRoute } from "./routes/UsersRoute";
 
 export const router = createBrowserRouter([
   {
@@ -57,13 +58,16 @@ export const router = createBrowserRouter([
         children: [{ path: ROUTES.calendar, element: <CalendarRoute /> }],
       },
       {
-        // Reports are admin-only
+        // Reports and user management are admin-only
         element: (
           <RequireRole role="admin">
             <Outlet />
           </RequireRole>
         ),
-        children: [{ path: ROUTES.dashboard, element: <DashboardRoute /> }],
+        children: [
+          { path: ROUTES.dashboard, element: <DashboardRoute /> },
+          { path: ROUTES.admin.users, element: <UsersRoute /> },
+        ],
       },
     ],
   },
