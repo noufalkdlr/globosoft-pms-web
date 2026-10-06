@@ -21,6 +21,11 @@ export const CLIENT_ENDPOINTS = {
   detail: (id: number) => `/clients/${id}`,
 } as const;
 
+export const CONTENT_TYPE_ENDPOINTS = {
+  list: "/content-types",
+  create: "/content-types",
+} as const;
+
 export const NOTIFICATION_ENDPOINTS = {
   list: "/notifications",
   markRead: (id: number) => `/notifications/${id}/read`,

@@ -1,5 +1,6 @@
 import type { AuthUser } from "../types/authTypes";
-import { fakeApiError, readSession, wait } from "./dummyAuth";
+import { fakeApiError, wait } from "../../../lib/api/dummyHelpers";
+import { readSession } from "./dummyAuth";
 
 // DUMMY IMPLEMENTATION. Used on app start to restore an existing session.
 // When the FastAPI backend is ready, replace the body with:

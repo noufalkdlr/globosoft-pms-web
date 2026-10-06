@@ -1,10 +1,6 @@
 import type { GoogleLoginRequest, LoginResponse } from "../types/authTypes";
-import {
-  fakeApiError,
-  resolveDummyUser,
-  wait,
-  writeSession,
-} from "./dummyAuth";
+import { fakeApiError, wait } from "../../../lib/api/dummyHelpers";
+import { resolveDummyUser, writeSession } from "./dummyAuth";
 
 // DUMMY IMPLEMENTATION. In the dummy flow `credential` is simply the chosen
 // account's email. When the FastAPI backend is ready, replace the body with:

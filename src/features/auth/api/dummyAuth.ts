@@ -1,5 +1,3 @@
-import { AxiosError, type InternalAxiosRequestConfig } from "axios";
-
 import type { AuthUser, Team } from "../types/authTypes";
 
 // TEMPORARY: simulates the FastAPI auth backend so the UI can be built and
@@ -56,25 +54,6 @@ export const DEMO_ACCOUNTS: AuthUser[] = [
 
 // An account that exists on Google but was never added by an admin
 export const NOT_ADDED_EMAIL = "someone.else@gmail.com";
-
-export function wait(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
-// Builds the same error object axios throws for a real HTTP error response,
-// with FastAPI's { detail } body, so error handling code behaves identically
-// with dummy data and with the real backend.
-export function fakeApiError(status: number, detail: string) {
-  const config = { headers: {} } as InternalAxiosRequestConfig;
-
-  return new AxiosError(
-    `Request failed with status code ${status}`,
-    AxiosError.ERR_BAD_REQUEST,
-    config,
-    null,
-    { data: { detail }, status, statusText: "", headers: {}, config },
-  );
-}
 
 // Same rule the backend must apply: Gmail ignores case, dots and "+tag" parts,
 // so "Noufal.Globosoft@gmail.com" and "noufalglobosoft@gmail.com" are one

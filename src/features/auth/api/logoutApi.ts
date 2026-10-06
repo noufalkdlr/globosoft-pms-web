@@ -1,4 +1,5 @@
-import { clearSession, wait } from "./dummyAuth";
+import { wait } from "../../../lib/api/dummyHelpers";
+import { clearSession } from "./dummyAuth";
 
 // DUMMY IMPLEMENTATION. When the FastAPI backend is ready, replace the body with:
 //
