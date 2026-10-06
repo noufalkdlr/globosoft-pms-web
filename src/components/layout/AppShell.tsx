@@ -48,7 +48,8 @@ function MobileLink({ item }: { item: NavItem }) {
       }
     >
       <Icon className="size-5" aria-hidden="true" />
-      {item.label}
+      {/* The bottom bar is narrow, so long names use a short label */}
+      {item.shortLabel ?? item.label}
     </NavLink>
   );
 }
@@ -140,7 +141,7 @@ export function AppShell() {
     return null;
   }
 
-  const items = getNavItems(user.role);
+  const items = getNavItems(user);
 
   return (
     <GlowBackground>

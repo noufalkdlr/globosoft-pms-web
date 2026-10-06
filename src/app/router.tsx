@@ -4,10 +4,12 @@ import { ROUTES } from "../lib/routes";
 import { AppShell } from "../components/layout/AppShell";
 import { LoginRoute } from "./routes/public/LoginRoute";
 import { BoardRoute } from "./routes/BoardRoute";
+import { CalendarRoute } from "./routes/CalendarRoute";
 import { ClientsRoute } from "./routes/ClientsRoute";
 import { DashboardRoute } from "./routes/DashboardRoute";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
+import { RequirePermission } from "./routes/RequirePermission";
 import { RequireRole } from "./routes/RequireRole";
 
 export const router = createBrowserRouter([
@@ -35,6 +37,15 @@ export const router = createBrowserRouter([
     children: [
       { path: ROUTES.board, element: <BoardRoute /> },
       { path: ROUTES.clients, element: <ClientsRoute /> },
+      {
+        // The content calendar is for people who write cards
+        element: (
+          <RequirePermission permission="can_create_content">
+            <Outlet />
+          </RequirePermission>
+        ),
+        children: [{ path: ROUTES.calendar, element: <CalendarRoute /> }],
+      },
       {
         // Reports are admin-only
         element: (

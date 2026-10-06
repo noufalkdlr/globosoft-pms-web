@@ -12,6 +12,7 @@
 
   --color-success: #30d158;
   --color-destructive: #ff453a;
+  --color-warning: #ffd60a;
 
   /* Brand glows derive from --color-brand, so changing the brand color updates them too */
   --shadow-brand-glow: 0 0 24px
