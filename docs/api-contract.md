@@ -232,6 +232,7 @@ A content card and a board task are the same record. A card starts as `new`, bec
   "created_by": { "id": 2, "name": "Marketing Demo" },
   "assigned_to": null,
   "file_link": null,
+  "latest_review": null,
   "posting_date": "2026-11-14",
   "deadline": "2026-11-10",
   "created_at": "2026-10-06T09:00:00Z",
@@ -241,11 +242,31 @@ A content card and a board task are the same record. A card starts as `new`, bec
 
 `status` is one of `new`, `todo`, `ongoing`, `submitted`, `fix`, `done`.
 `month` is the month the card is for ("YYYY-MM"), not the day it was created.
+`file_link` is the link to the finished design, set when the designer submits.
+`latest_review` is the most recent review or `null`:
+
+```json
+{
+  "id": 4,
+  "decision": "rejected",
+  "comment": "Please make the logo bigger.",
+  "reviewer": { "id": 2, "name": "Marketing Demo" },
+  "created_at": "2026-10-06T09:00:00Z"
+}
+```
+
+`decision` is `approved` or `rejected`. For a card in `fix`, `latest_review` is the
+rejection whose `comment` the designer sees. Reviews are kept as history in a `reviews`
+table (`id`, `task_id`, `reviewer_id`, `decision`, `comment`, `created_at`); a listing
+endpoint comes with the card detail view.
 
 ### `GET /tasks`
 
-Query: `month`, `client_id`, `assigned_to`, `status`, `limit`, `offset`. `200` paginated
-`Task`, sorted by `deadline` (cards without one last), then `id`.
+Query: `month`, `client_id`, `assigned_to`, `status`, `include_late`, `limit`, `offset`.
+`200` paginated `Task`, sorted by `deadline` (cards without one last), then `id`.
+
+`include_late=true` (used with `month`) adds cards of earlier months that are not `done`
+yet: work that carried over. The board shows them flagged as late.
 
 Visibility: a user sees a card if they have `can_assign` or `can_review`, are an admin,
 are the assignee, or created it. Anything else is invisible (`404` on a single card),
@@ -286,6 +307,48 @@ changing `assigned_to` needs `can_assign`.
   `todo` card makes it `new`.
 - `404` unknown or invisible card; `403`, `422` as above.
 - Validate everything first; if anything fails, change nothing.
+
+### `PATCH /tasks/{id}/status`
+
+Moves a card along the board. Body:
+
+```json
+{
+  "status": "submitted",
+  "updated_at": "2026-10-06T09:00:00Z",
+  "file_link": "https://drive.example.com/file/12",
+  "comment": "optional, or required for fix"
+}
+```
+
+`200` `Task` (with the new `updated_at` and `latest_review`). The moves that exist:
+
+| from | to | who | also needed |
+|---|---|---|---|
+| `new` | `todo` | `can_assign` | a designer: done with `PATCH /tasks/{id}` and `assigned_to`, not here |
+| `todo` | `ongoing` | the card's designer | |
+| `ongoing` | `submitted` | the card's designer | `file_link` (required) |
+| `submitted` | `done` | `can_review` | `comment` optional; creates an `approved` review |
+| `submitted` | `fix` | `can_review` | `comment` required; creates a `rejected` review |
+| `fix` | `submitted` | the card's designer | `file_link` optional (replaces the old one) |
+
+Admins may make any move in the table. Nobody else can: being able to assign or review
+does not let you do the designer's moves.
+
+Checks, in this order (the first that fails answers):
+
+1. `404` the card does not exist or is invisible to the user.
+2. `422` `status` is not a valid status, or `updated_at` is missing.
+3. `409` `updated_at` is not the card's current value: `"This card was changed by someone
+   else. Refresh and try again."` Two people moving the same card must never overwrite
+   each other. `updated_at` must change on every write, and always get strictly later.
+4. `409` the move is not in the table: `"A card that is "To do" can't move to "Done"."`
+   (and for `new` to `todo`: `"Assign a designer to move this card to To do."`).
+5. `403` the user may not make this move.
+6. `422` `file_link` missing or not an http(s) link (at most 500 characters), or `comment`
+   missing for `fix` or longer than 1000 characters.
+
+Do all of it in one transaction: status, link, review and `updated_at` change together.
 
 ### `DELETE /tasks/{id}`
 
@@ -383,3 +446,12 @@ was never written.
   change this month's overview.
 - Cards: deleting is only possible for `new` and `todo` cards (`409` after that), needs
   `can_create_content` (`403`), hides invisible cards (`404`), and never reuses an id.
+- Moves: every pair of statuses that is not in the table gives `409`; each move in the table
+  works for the right person and gives `403` for everyone else (a reviewer cannot start a
+  card, a designer cannot approve their own, an admin can do all).
+- Moves: a stale `updated_at` gives `409` and changes nothing; every successful write moves
+  `updated_at` strictly forward; two moves sent with the same `updated_at` let only one win.
+- Moves: submitting needs a valid link, rejecting needs a comment; a rejection is stored as
+  a review and shows as `latest_review`; resubmitting then approving makes the approval the
+  latest review and keeps the rejection in the history.
+- Cards: `include_late` adds earlier months' unfinished cards and never earlier `done` ones.

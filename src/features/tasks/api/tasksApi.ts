@@ -1,11 +1,18 @@
 import { wait } from "../../../lib/api/dummyHelpers";
-import { createTask, deleteTask, listTasks, updateTask } from "./dummyTasks";
+import {
+  changeTaskStatus,
+  createTask,
+  deleteTask,
+  listTasks,
+  updateTask,
+} from "./dummyTasks";
 
 import type { PaginatedResponse } from "../../../types/paginationTypes";
 import type {
   Task,
   TaskCreateRequest,
   TaskListParams,
+  TaskStatusChangeRequest,
   TaskUpdateRequest,
 } from "../types/taskTypes";
 
@@ -46,4 +53,15 @@ export async function deleteTaskApi(id: number): Promise<void> {
   await wait(400);
 
   deleteTask(id);
+}
+
+// const response = await api.patch<Task>(TASK_ENDPOINTS.status(id), payload);
+// return response.data;
+export async function changeTaskStatusApi(
+  id: number,
+  payload: TaskStatusChangeRequest,
+): Promise<Task> {
+  await wait(400);
+
+  return changeTaskStatus(id, payload);
 }

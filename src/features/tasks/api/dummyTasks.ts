@@ -14,6 +14,9 @@ import {
   findUser,
 } from "../../users/api/dummyUsers";
 
+import { STATUS_LABEL } from "../lib/taskStatus";
+import { canMove, getMoveRule } from "../lib/taskRules";
+
 import type { AuthUser } from "../../auth/types/authTypes";
 import type {
   ClientMonthOverview,
@@ -26,7 +29,9 @@ import type {
   TaskCreateRequest,
   TaskListParams,
   TaskPerson,
+  TaskReview,
   TaskStatus,
+  TaskStatusChangeRequest,
   TaskUpdateRequest,
 } from "../types/taskTypes";
 
@@ -39,6 +44,14 @@ const STORAGE_KEY = "pms-dummy-tasks";
 const MAX_TITLE_LENGTH = 120;
 const MAX_CONTENT_LENGTH = 5000;
 const MAX_MONTHS_AHEAD = 24;
+
+interface ReviewRow {
+  id: number;
+  decision: "approved" | "rejected";
+  comment: string | null;
+  reviewer_id: number;
+  created_at: string;
+}
 
 interface TaskRow {
   id: number;
@@ -53,6 +66,8 @@ interface TaskRow {
   file_link: string | null;
   posting_date: string | null;
   deadline: string | null;
+  // Oldest first
+  reviews: ReviewRow[];
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +75,7 @@ interface TaskRow {
 interface State {
   tasks: TaskRow[];
   nextId: number;
+  nextReviewId: number;
 }
 
 // ---- seed data -----------------------------------------------------------
@@ -92,9 +108,11 @@ function buildSeed(): State {
   const month = getCurrentMonth();
   const nextMonth = addMonths(month, 1);
   const now = new Date().toISOString();
+  const previousMonth = addMonths(month, -1);
   const tasks: TaskRow[] = [];
   const counters = new Map<string, number>();
   let nextId = 1;
+  let nextReviewId = 1;
 
   function addCards(
     clientId: number,
@@ -114,7 +132,30 @@ function buildSeed(): State {
       const id = nextId++;
       const deadlineDay = 8 + ((id * 3) % 16);
       const hasDesigner = status !== "new";
-      const hasFile = status === "submitted" || status === "done";
+      const hasFile =
+        status === "submitted" || status === "done" || status === "fix";
+
+      // Cards that were reviewed carry their review: approved when done, a
+      // rejection with a comment when sent back for correction
+      const reviews: ReviewRow[] = [];
+
+      if (status === "done") {
+        reviews.push({
+          id: nextReviewId++,
+          decision: "approved",
+          comment: null,
+          reviewer_id: MARKETING_USER_ID,
+          created_at: now,
+        });
+      } else if (status === "fix") {
+        reviews.push({
+          id: nextReviewId++,
+          decision: "rejected",
+          comment: "Please make the logo bigger and fix the offer text.",
+          reviewer_id: MARKETING_USER_ID,
+          created_at: now,
+        });
+      }
 
       tasks.push({
         id,
@@ -130,6 +171,7 @@ function buildSeed(): State {
         file_link: hasFile ? `https://drive.example.com/file/${id}` : null,
         posting_date: status === "new" ? null : `${targetMonth}-${pad(deadlineDay + 2)}`,
         deadline: `${targetMonth}-${pad(deadlineDay)}`,
+        reviews,
         created_at: now,
         updated_at: now,
       });
@@ -159,11 +201,15 @@ function buildSeed(): State {
   // Dental Care
   addCards(4, 1, month, ["done", "submitted", "ongoing", "todo", "new"]);
 
+  // Work left over from last month: shows as "late" on the board
+  addCards(3, 1, previousMonth, ["done", "ongoing", "fix"]);
+  addCards(4, 1, previousMonth, ["done", "todo"]);
+
   // Auto Hub: posters done, one 3D in progress
   addCards(5, 1, month, repeat("done", 6));
   addCards(5, 6, month, ["ongoing"]);
 
-  return { tasks, nextId };
+  return { tasks, nextId, nextReviewId };
 }
 
 let state: State | null = null;
@@ -177,7 +223,15 @@ function load(): State {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (raw) {
-      state = JSON.parse(raw) as State;
+      const saved = JSON.parse(raw) as State;
+
+      // Data saved before reviews existed: fill in what is missing
+      saved.nextReviewId ??= 1;
+      saved.tasks.forEach((row) => {
+        row.reviews ??= [];
+      });
+
+      state = saved;
       return state;
     }
   } catch {
@@ -226,6 +280,25 @@ function toPerson(userId: number): TaskPerson {
   return { id: userId, name: user?.name ?? "Unknown user" };
 }
 
+function toReview(row: ReviewRow): TaskReview {
+  return {
+    id: row.id,
+    decision: row.decision,
+    comment: row.comment,
+    reviewer: toPerson(row.reviewer_id),
+    created_at: row.created_at,
+  };
+}
+
+// A new modification time that is always later than the previous one, even
+// when two changes land in the same millisecond. Clients use it to notice that
+// a card changed under them.
+function nextTimestamp(previous: string) {
+  const now = new Date().toISOString();
+
+  return now > previous ? now : new Date(Date.parse(previous) + 1).toISOString();
+}
+
 function toTask(row: TaskRow): Task {
   const client = findClientRow(row.client_id);
   const contentType = findContentType(row.content_type_id);
@@ -245,6 +318,7 @@ function toTask(row: TaskRow): Task {
     created_by: toPerson(row.created_by_id),
     assigned_to: row.assigned_to_id === null ? null : toPerson(row.assigned_to_id),
     file_link: row.file_link,
+    latest_review: row.reviews.length > 0 ? toReview(row.reviews[row.reviews.length - 1]) : null,
     posting_date: row.posting_date,
     deadline: row.deadline,
     created_at: row.created_at,
@@ -355,13 +429,24 @@ function byDeadline(a: TaskRow, b: TaskRow) {
 
 export function listTasks(params: TaskListParams = {}): PaginatedResponse<Task> {
   const user = requireUser();
-  const { month, client_id, assigned_to, status, limit = 50, offset = 0 } = params;
+  const {
+    month,
+    client_id,
+    assigned_to,
+    status,
+    include_late = false,
+    limit = 50,
+    offset = 0,
+  } = params;
 
   const matches = load()
     .tasks.filter(
       (row) =>
         canSee(user, row) &&
-        (month === undefined || row.month === month) &&
+        (month === undefined ||
+          row.month === month ||
+          // Unfinished work from earlier months, when the caller asks for it
+          (include_late && row.month < month && row.status !== "done")) &&
         (client_id === undefined || row.client_id === client_id) &&
         (assigned_to === undefined || row.assigned_to_id === assigned_to) &&
         (status === undefined || row.status === status),
@@ -425,6 +510,7 @@ export function createTask(request: TaskCreateRequest): Task {
     file_link: null,
     posting_date: postingDate,
     deadline,
+    reviews: [],
     created_at: now,
     updated_at: now,
   };
@@ -517,7 +603,157 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     }
   }
 
-  row.updated_at = new Date().toISOString();
+  row.updated_at = nextTimestamp(row.updated_at);
+  save();
+
+  return toTask(row);
+}
+
+const MAX_COMMENT_LENGTH = 1000;
+const MAX_LINK_LENGTH = 500;
+
+function cleanFileLink(value: string) {
+  const link = value.trim();
+
+  let isValid = false;
+
+  try {
+    const url = new URL(link);
+    isValid = url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    isValid = false;
+  }
+
+  if (!isValid || link.length > MAX_LINK_LENGTH) {
+    throw fakeApiError(
+      422,
+      "Enter a valid link, starting with http:// or https://.",
+    );
+  }
+
+  return link;
+}
+
+function cleanComment(value: string) {
+  const comment = value.trim();
+
+  if (comment.length > MAX_COMMENT_LENGTH) {
+    throw fakeApiError(
+      422,
+      `Use ${MAX_COMMENT_LENGTH} characters or fewer for the comment.`,
+    );
+  }
+
+  return comment;
+}
+
+const STATUSES: TaskStatus[] = ["new", "todo", "ongoing", "submitted", "fix", "done"];
+
+// Moves a card along the board. The rules live in lib/taskRules.ts; this
+// enforces them the way the backend must, in this order: the card must be
+// visible (404), the person must have seen its latest version (409), the move
+// must exist in the table (409), they must be allowed to make it (403), and
+// what they supply must be valid (422). Nothing changes unless all pass.
+export function changeTaskStatus(
+  id: number,
+  request: TaskStatusChangeRequest,
+): Task {
+  const user = requireUser();
+  const row = load().tasks.find((task) => task.id === id);
+
+  if (!row || !canSee(user, row)) {
+    throw fakeApiError(404, "Card not found.");
+  }
+
+  if (!STATUSES.includes(request.status)) {
+    throw fakeApiError(422, "Choose a valid status.");
+  }
+
+  if (!request.updated_at) {
+    throw fakeApiError(422, "updated_at is required.");
+  }
+
+  if (request.updated_at !== row.updated_at) {
+    throw fakeApiError(
+      409,
+      "This card was changed by someone else. Refresh and try again.",
+    );
+  }
+
+  const rule = getMoveRule(row.status, request.status);
+
+  if (!rule) {
+    throw fakeApiError(
+      409,
+      `A card that is "${STATUS_LABEL[row.status]}" can't move to "${STATUS_LABEL[request.status]}".`,
+    );
+  }
+
+  // Giving a card to a designer is an assignment, not a plain status change
+  if (rule.input === "designer") {
+    throw fakeApiError(
+      409,
+      "Assign a designer to move this card to To do.",
+    );
+  }
+
+  const task = toTask(row);
+
+  if (!canMove(user, task, request.status)) {
+    throw fakeApiError(403, "You don't have permission to move this card.");
+  }
+
+  let fileLink = row.file_link;
+  let review: ReviewRow | null = null;
+  const reviewerId = user.id;
+  const now = new Date().toISOString();
+
+  if (rule.input === "file_link") {
+    if (!request.file_link || !request.file_link.trim()) {
+      throw fakeApiError(422, "Add the link to your finished design.");
+    }
+
+    fileLink = cleanFileLink(request.file_link);
+  } else if (rule.input === "optional_file_link" && request.file_link) {
+    fileLink = cleanFileLink(request.file_link);
+  }
+
+  if (rule.input === "comment") {
+    const comment = cleanComment(request.comment ?? "");
+
+    if (!comment) {
+      throw fakeApiError(422, "Tell the designer what to fix.");
+    }
+
+    review = {
+      id: 0,
+      decision: "rejected",
+      comment,
+      reviewer_id: reviewerId,
+      created_at: now,
+    };
+  } else if (request.status === "done") {
+    const comment = cleanComment(request.comment ?? "");
+
+    review = {
+      id: 0,
+      decision: "approved",
+      comment: comment || null,
+      reviewer_id: reviewerId,
+      created_at: now,
+    };
+  }
+
+  row.status = request.status;
+  row.file_link = fileLink;
+
+  if (review) {
+    review.id = load().nextReviewId;
+    load().nextReviewId += 1;
+    row.reviews.push(review);
+  }
+
+  row.updated_at = nextTimestamp(row.updated_at);
   save();
 
   return toTask(row);

@@ -17,6 +17,16 @@ export interface TaskPerson {
   name: string;
 }
 
+// A reviewer's decision on a submitted design. Rejecting needs a comment that
+// tells the designer what to fix.
+export interface TaskReview {
+  id: number;
+  decision: "approved" | "rejected";
+  comment: string | null;
+  reviewer: TaskPerson;
+  created_at: string;
+}
+
 // A card on the content calendar and a task on the board are the same thing
 export interface Task {
   id: number;
@@ -28,7 +38,11 @@ export interface Task {
   status: TaskStatus;
   created_by: TaskPerson;
   assigned_to: TaskPerson | null;
+  // The link to the finished design, set when the designer submits
   file_link: string | null;
+  // The most recent review, or null if the card was never reviewed. For a card
+  // in "fix" this is the rejection with the comment to show the designer.
+  latest_review: TaskReview | null;
   posting_date: string | null; // "YYYY-MM-DD"
   deadline: string | null; // "YYYY-MM-DD"
   created_at: string;
@@ -40,6 +54,9 @@ export interface TaskListParams {
   client_id?: number;
   assigned_to?: number;
   status?: TaskStatus;
+  // Together with `month`: also include cards of earlier months that are not
+  // done yet ("late" work that carried over)
+  include_late?: boolean;
   limit?: number;
   offset?: number;
 }
@@ -66,4 +83,16 @@ export interface TaskUpdateRequest {
   deadline?: string | null;
   // null removes the assignee (a "todo" card goes back to "new")
   assigned_to?: number | null;
+}
+
+// Moving a card on the board. The rules are in lib/taskRules.ts.
+export interface TaskStatusChangeRequest {
+  status: TaskStatus;
+  // The `updated_at` the person saw. If the card changed since (someone else
+  // moved it), the move is refused with 409 instead of overwriting their work.
+  updated_at: string;
+  // Required when submitting for approval, optional when resubmitting after a correction
+  file_link?: string | null;
+  // Required when sending a card back for correction, optional when approving
+  comment?: string;
 }
