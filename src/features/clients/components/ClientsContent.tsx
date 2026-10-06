@@ -1,4 +1,5 @@
 import { useId, useState } from "react";
+import { Plus } from "lucide-react";
 
 import { Button } from "../../../components/ui/Button";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
@@ -13,6 +14,7 @@ import { toast } from "../../../stores/toastStore";
 import { useClients } from "../hooks/useClients";
 import { useUpdateClient } from "../hooks/useUpdateClient";
 import { ClientCard } from "./ClientCard";
+import { ClientFormDialog } from "./ClientFormDialog";
 
 import type { Client } from "../types/clientTypes";
 
@@ -81,6 +83,8 @@ export function ClientsContent() {
   const [tab, setTab] = useState<ClientTab>("active");
   const [search, setSearch] = useState("");
   const [clientToArchive, setClientToArchive] = useState<Client | null>(null);
+  // "new" = the add form is open, a client = editing it, null = closed
+  const [formTarget, setFormTarget] = useState<Client | "new" | null>(null);
 
   const debouncedSearch = useDebouncedValue(search, 300).trim();
   const isArchivedTab = tab === "archived";
@@ -156,7 +160,16 @@ export function ClientsContent() {
       ) : (
         <MessageCard
           title="No clients yet"
-          description="Clients appear here once they are added."
+          description={
+            canManage
+              ? "Add your first client to plan its monthly content."
+              : "Clients appear here once Marketing adds them."
+          }
+          action={
+            canManage
+              ? { label: "Add client", onClick: () => setFormTarget("new") }
+              : undefined
+          }
         />
       );
     }
@@ -169,6 +182,7 @@ export function ClientsContent() {
               client={client}
               canManage={canManage}
               busy={busyClientId === client.id}
+              onEdit={setFormTarget}
               onArchive={setClientToArchive}
               onRestore={handleRestore}
             />
@@ -180,12 +194,23 @@ export function ClientsContent() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Clients</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {canManage
-          ? "Manage your clients and their monthly plans."
-          : "You can view clients. Marketing adds and edits them."}
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Clients</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {canManage
+              ? "Manage your clients and their monthly plans."
+              : "You can view clients. Marketing adds and edits them."}
+          </p>
+        </div>
+
+        {canManage && (
+          <Button className="shrink-0 gap-2" onClick={() => setFormTarget("new")}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add client
+          </Button>
+        )}
+      </div>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput
@@ -224,6 +249,13 @@ export function ClientsContent() {
       >
         {renderList()}
       </div>
+
+      {formTarget !== null && (
+        <ClientFormDialog
+          client={formTarget === "new" ? null : formTarget}
+          onClose={() => setFormTarget(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={clientToArchive !== null}

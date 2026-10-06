@@ -15,6 +15,12 @@ export function useCreateContentType() {
   return useMutation<ContentType, Error, ContentTypeCreateRequest>({
     mutationFn: createContentTypeApi,
     onSuccess: (contentType) => {
+      // Add the new type to the cached list right away, so a dropdown that
+      // selects it does not flash empty while the list refetches
+      queryClient.setQueryData<ContentType[]>(
+        queryKeys.contentTypes.all,
+        (current) => (current ? [...current, contentType] : current),
+      );
       void queryClient.invalidateQueries({
         queryKey: queryKeys.contentTypes.all,
       });

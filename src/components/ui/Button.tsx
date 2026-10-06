@@ -27,10 +27,14 @@ export function Button({
   disabled,
   className,
   children,
+  // A bare <button> inside a form submits it. Default to "button" so only a
+  // button that says type="submit" can do that.
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       // Block clicks while loading to prevent double submits
       disabled={disabled || loading}
       className={cn(

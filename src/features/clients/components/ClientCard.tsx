@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore } from "lucide-react";
+import { Archive, ArchiveRestore, Pencil } from "lucide-react";
 
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
@@ -12,6 +12,7 @@ interface ClientCardProps {
   canManage: boolean;
   // True while a request for this client is in flight
   busy: boolean;
+  onEdit: (client: Client) => void;
   onArchive: (client: Client) => void;
   onRestore: (client: Client) => void;
 }
@@ -23,6 +24,7 @@ export function ClientCard({
   client,
   canManage,
   busy,
+  onEdit,
   onArchive,
   onRestore,
 }: ClientCardProps) {
@@ -65,6 +67,19 @@ export function ClientCard({
 
       {canManage && (
         <div className="flex shrink-0 gap-1">
+          {/* Archived clients are restored first, then edited */}
+          {!client.is_archived && (
+            <button
+              type="button"
+              aria-label={`Edit ${client.name}`}
+              title="Edit"
+              disabled={busy}
+              onClick={() => onEdit(client)}
+              className={ICON_BUTTON_CLASS}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
+          )}
           {client.is_archived ? (
             <button
               type="button"
