@@ -4,6 +4,7 @@ import { ROUTES } from "../lib/routes";
 import { AppShell } from "../components/layout/AppShell";
 import { LoginRoute } from "./routes/public/LoginRoute";
 import { BoardRoute } from "./routes/BoardRoute";
+import { ClientsRoute } from "./routes/ClientsRoute";
 import { DashboardRoute } from "./routes/DashboardRoute";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
     ),
     children: [
       { path: ROUTES.board, element: <BoardRoute /> },
+      { path: ROUTES.clients, element: <ClientsRoute /> },
       {
         // Reports are admin-only
         element: (

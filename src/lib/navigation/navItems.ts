@@ -1,4 +1,5 @@
 import {
+  Briefcase,
   LayoutDashboard,
   SquareKanban,
   type LucideIcon,
@@ -18,6 +19,7 @@ export interface NavItem {
 
 // Add a new page to the sidebar / mobile bar by adding one entry here
 export const NAV_ITEMS: NavItem[] = [
+  { label: "Clients", href: ROUTES.clients, icon: Briefcase },
   { label: "Board", href: ROUTES.board, icon: SquareKanban },
   {
     label: "Dashboard",

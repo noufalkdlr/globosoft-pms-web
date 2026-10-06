@@ -5,6 +5,7 @@ export const ROUTES = {
   root: "/",
   login: "/login",
   board: "/board",
+  clients: "/clients",
   dashboard: "/dashboard",
 
   admin: {
