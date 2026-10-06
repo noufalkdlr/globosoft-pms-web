@@ -10,6 +10,8 @@ export interface Team {
   can_create_content: boolean;
   can_assign: boolean;
   can_review: boolean;
+  // Members of this team can be given cards to work on (the Design team)
+  can_receive_tasks: boolean;
 }
 
 export interface AuthUser {

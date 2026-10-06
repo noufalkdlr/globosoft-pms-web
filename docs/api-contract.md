@@ -48,12 +48,16 @@ emails lower-cased, and for `gmail.com` ignore dots and `+tag` parts
     "can_manage_clients": false,
     "can_create_content": false,
     "can_assign": false,
-    "can_review": false
+    "can_review": false,
+    "can_receive_tasks": true
   }
 }
 ```
 
 `role` is `"admin"` or `"member"`. `team` is `null` for admins.
+
+Team flags: `can_manage_clients`, `can_create_content`, `can_assign`, `can_review`,
+and `can_receive_tasks` (members of the team can be given cards: the Design team).
 
 ### `GET /auth/me`
 
@@ -195,6 +199,155 @@ Result: months before M, and every report built on them, never change. Months
 from M on follow the new plan, and keep following it until the next change.
 Do all of it in one database transaction.
 
+## Users
+
+### `GET /users/assignable`
+
+Needs `can_assign`. `200` `AssignableUser[]`, sorted by name: the active users whose
+team has `can_receive_tasks`. Used by the "Assign to" dropdowns.
+
+```json
+[{ "id": 11, "name": "Anu Mathew", "team": { "id": 2, "name": "Design" } }]
+```
+
+Declare this route before `/users/{id}`, or `assignable` is read as an id.
+
+## Cards (tasks)
+
+A content card and a board task are the same record. A card starts as `new`, becomes
+`todo` when a designer is assigned, and then follows the board flow
+(`ongoing`, `submitted`, `fix`, `done`; the status endpoint comes with the board).
+
+`Task`:
+
+```json
+{
+  "id": 7,
+  "client": { "id": 1, "name": "Fresh Bakes" },
+  "content_type": { "id": 1, "name": "Poster", "is_active": true },
+  "month": "2026-11",
+  "title": "Festive offer poster",
+  "content": "Caption and talking points...",
+  "status": "new",
+  "created_by": { "id": 2, "name": "Marketing Demo" },
+  "assigned_to": null,
+  "file_link": null,
+  "posting_date": "2026-11-14",
+  "deadline": "2026-11-10",
+  "created_at": "2026-10-06T09:00:00Z",
+  "updated_at": "2026-10-06T09:00:00Z"
+}
+```
+
+`status` is one of `new`, `todo`, `ongoing`, `submitted`, `fix`, `done`.
+`month` is the month the card is for ("YYYY-MM"), not the day it was created.
+
+### `GET /tasks`
+
+Query: `month`, `client_id`, `assigned_to`, `status`, `limit`, `offset`. `200` paginated
+`Task`, sorted by `deadline` (cards without one last), then `id`.
+
+Visibility: a user sees a card if they have `can_assign` or `can_review`, are an admin,
+are the assignee, or created it. Anything else is invisible (`404` on a single card),
+not `403`.
+
+### `POST /tasks`
+
+Needs `can_create_content`. `201` `Task`.
+
+```json
+{
+  "client_id": 1,
+  "content_type_id": 1,
+  "month": "2026-11",
+  "title": "Festive offer poster",
+  "content": "optional text",
+  "posting_date": "2026-11-14",
+  "deadline": "2026-11-10",
+  "assigned_to": 11
+}
+```
+
+`content`, `posting_date`, `deadline` and `assigned_to` are optional. With `assigned_to`
+the card starts as `todo` (this also needs `can_assign`), otherwise as `new`.
+
+- `403` no permission (creating, or assigning).
+- `422` validation (below).
+
+### `PATCH /tasks/{id}`
+
+Partial update, `200` `Task`. Editing content fields (`title`, `content`,
+`content_type_id`, `month`, `posting_date`, `deadline`) needs `can_create_content`;
+changing `assigned_to` needs `can_assign`.
+
+- A card can only be edited while it is `new` or `todo`. After that `409`
+  `"This card is already in progress, so it can't be edited."`
+- Setting `assigned_to` on a `new` card makes it `todo`. Setting it to `null` on a
+  `todo` card makes it `new`.
+- `404` unknown or invisible card; `403`, `422` as above.
+- Validate everything first; if anything fails, change nothing.
+
+### Card validation
+
+- `title`: trimmed, inner spaces collapsed, 1 to 120 characters.
+- `content`: at most 5000 characters, may be empty.
+- `client_id`: an existing, non-archived client.
+- `month`: `YYYY-MM`, this month (IST) or later, at most 24 months ahead.
+- `content_type_id`: an active type that is in the client's plan **for that month**.
+  The dropdown only offers those, and this keeps the data consistent.
+- `posting_date`, `deadline`: real calendar dates (`2026-02-30` is invalid). If both
+  are given, the deadline must not be after the posting date.
+- `assigned_to`: an active user whose team has `can_receive_tasks`.
+
+## Month overview
+
+### `GET /clients/overview?month=2026-11`
+
+Needs `can_create_content`, `can_assign` or `can_review`. `200` `ClientMonthOverview[]`
+sorted by client name. Not paginated: one entry per client.
+
+Included: every non-archived client, and archived clients only if they have cards in
+that month.
+
+```json
+{
+  "client": { "id": 1, "name": "Fresh Bakes", "is_archived": false },
+  "month": "2026-11",
+  "types": [
+    {
+      "content_type": { "id": 1, "name": "Poster", "is_active": true },
+      "target": 12, "written": 8, "assigned": 7, "done": 5,
+      "to_write": 4, "extra": 0, "delivery_remaining": 7, "to_design": 3
+    }
+  ],
+  "totals": {
+    "target": 16, "written": 10, "assigned": 9, "done": 5,
+    "to_write": 6, "extra": 0, "delivery_remaining": 11, "to_design": 5,
+    "unassigned": 1
+  }
+}
+```
+
+`types` has one entry per content type that is in the plan for the month or has cards in
+it (a type that is not in the plan has `target: 0`). Numbers are computed per type, never
+stored; `totals` is the sum, plus `unassigned`.
+
+| field | meaning |
+|---|---|
+| `target` | count in the plan in force for the month |
+| `written` | cards created, any status |
+| `assigned` | cards with an assignee |
+| `done` | cards with status `done` |
+| `to_write` | `max(target - written, 0)` |
+| `extra` | `max(written - target, 0)` |
+| `delivery_remaining` | `max(target - done, 0)` |
+| `to_design` | `max(delivery_remaining - to_write, 0)`: has content, waits on design |
+| `unassigned` | cards with no assignee (totals only) |
+
+Example from the plan: target 12, written 8, done 5 gives `to_write` 4, `delivery_remaining` 7,
+`to_design` 3. Splitting the 7 this way keeps designers from being blamed for content that
+was never written.
+
 ## Backend tests to write (pytest)
 
 - A user without `can_manage_clients` gets `403` on every write; an admin never does.
@@ -206,3 +359,14 @@ Do all of it in one database transaction.
   `items` list ends everything from that month; a start month in the past gives `422`.
 - IST boundary: at 18:30 UTC on the last day of a month, "current month" is already the next one.
 - Gmail normalisation on sign-in (case, dots, `+tag`); inactive users get `403`.
+- Cards: a user without `can_create_content` gets `403` on create and edit; assigning needs
+  `can_assign` on top; a card cannot be edited once it is `ongoing` or later (`409`).
+- Cards: the type must be in the client's plan for the month; past months, impossible dates
+  and a deadline after the posting date give `422`; nothing is saved when validation fails.
+- Cards: assigning moves `new` to `todo`, unassigning moves `todo` back to `new`.
+- Cards: a Design member only lists cards assigned to them (or written by them); another
+  member's card is `404`, not `403`.
+- Overview: target 12, written 8, done 5 gives to_write 4, delivery_remaining 7, to_design 3;
+  extra cards give `extra`; a type missing from the plan has `target` 0; archived clients
+  appear only for months where they have cards; changing a plan from next month does not
+  change this month's overview.

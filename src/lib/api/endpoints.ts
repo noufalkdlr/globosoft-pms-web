@@ -19,6 +19,9 @@ export const CLIENT_ENDPOINTS = {
   list: "/clients",
   create: "/clients",
   detail: (id: number) => `/clients/${id}`,
+  // Per-client progress for one month. Declare this route before /clients/{id}
+  // on the backend, or "overview" is read as an id.
+  overview: "/clients/overview",
 } as const;
 
 export const CONTENT_TYPE_ENDPOINTS = {
@@ -45,4 +48,6 @@ export const USER_ENDPOINTS = {
   list: "/users",
   create: "/users",
   detail: (id: number) => `/users/${id}`,
+  // Team members who can be given cards. Declare before /users/{id}.
+  assignable: "/users/assignable",
 } as const;

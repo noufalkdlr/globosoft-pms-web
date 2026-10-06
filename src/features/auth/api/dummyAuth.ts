@@ -8,7 +8,7 @@ import type { AuthUser, Team } from "../types/authTypes";
 
 const SESSION_KEY = "pms-dummy-session";
 
-const TEAMS = {
+export const TEAMS = {
   marketing: {
     id: 1,
     name: "Marketing",
@@ -16,6 +16,7 @@ const TEAMS = {
     can_create_content: true,
     can_assign: true,
     can_review: true,
+    can_receive_tasks: false,
   },
   design: {
     id: 2,
@@ -24,6 +25,7 @@ const TEAMS = {
     can_create_content: false,
     can_assign: false,
     can_review: false,
+    can_receive_tasks: true,
   },
 } satisfies Record<string, Team>;
 

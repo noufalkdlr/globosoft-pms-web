@@ -381,3 +381,26 @@ export function updateClient(id: number, request: ClientUpdateRequest): Client {
 
   return toClient(row);
 }
+
+// Minimal client info for other dummy modules (tasks, overview)
+export interface ClientSummary {
+  id: number;
+  name: string;
+  is_archived: boolean;
+}
+
+export function findClientRow(id: number): ClientSummary | undefined {
+  const row = load().clients.find((client) => client.id === id);
+
+  return row
+    ? { id: row.id, name: row.name, is_archived: row.is_archived }
+    : undefined;
+}
+
+export function listClientRows(): ClientSummary[] {
+  return load().clients.map((row) => ({
+    id: row.id,
+    name: row.name,
+    is_archived: row.is_archived,
+  }));
+}
