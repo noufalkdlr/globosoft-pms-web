@@ -33,8 +33,14 @@ export interface Task {
   client: { id: number; name: string };
   content_type: ContentType;
   month: string; // "YYYY-MM"
+  // The card's name. Cards are named after their content type and a number
+  // ("Poster 3"), unless a title was given when the card was made.
   title: string;
+  // What the post says: the caption and talking points
   content: string;
+  // Extra instructions for the designer (colours, size, where the logo goes).
+  // Empty when there are none.
+  notes: string;
   status: TaskStatus;
   created_by: TaskPerson;
   assigned_to: TaskPerson | null;
@@ -65,8 +71,11 @@ export interface TaskCreateRequest {
   client_id: number;
   content_type_id: number;
   month: string;
-  title: string;
+  // Optional. Left out, the card is named after its content type and the next
+  // free number among that client's cards of the month: "Poster 3".
+  title?: string;
   content?: string;
+  notes?: string;
   posting_date?: string | null;
   deadline?: string | null;
   // Needs the can_assign permission. A card created with an assignee starts as "todo".
@@ -79,6 +88,7 @@ export interface TaskUpdateRequest {
   month?: string;
   title?: string;
   content?: string;
+  notes?: string;
   posting_date?: string | null;
   deadline?: string | null;
   // null removes the assignee (a "todo" card goes back to "new")

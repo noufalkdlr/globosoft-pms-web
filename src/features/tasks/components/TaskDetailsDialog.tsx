@@ -190,6 +190,18 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
             </p>
           )}
         </section>
+
+        {/* Notes are optional: shown only when the writer left some */}
+        {task.notes.trim() && (
+          <section aria-labelledby={`notes-${task.id}`}>
+            <h3 id={`notes-${task.id}`} className="mb-2 text-sm font-medium">
+              Notes
+            </h3>
+            <div className="max-h-[25vh] overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-border bg-white/5 p-4 text-sm">
+              {task.notes}
+            </div>
+          </section>
+        )}
       </div>
     </Modal>
   );

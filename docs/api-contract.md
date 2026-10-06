@@ -313,8 +313,9 @@ A content card and a board task are the same record. A card starts as `new`, bec
   "client": { "id": 1, "name": "Fresh Bakes" },
   "content_type": { "id": 1, "name": "Poster", "is_active": true },
   "month": "2026-11",
-  "title": "Festive offer poster",
+  "title": "Poster 3",
   "content": "Caption and talking points...",
+  "notes": "Use the brand colours. Logo top-left.",
   "status": "new",
   "created_by": { "id": 2, "name": "Marketing Demo" },
   "assigned_to": null,
@@ -368,23 +369,35 @@ Needs `can_create_content`. `201` `Task`.
   "client_id": 1,
   "content_type_id": 1,
   "month": "2026-11",
-  "title": "Festive offer poster",
-  "content": "optional text",
+  "content": "The caption and talking points",
+  "notes": "optional instructions for the designer",
   "posting_date": "2026-11-14",
   "deadline": "2026-11-10",
   "assigned_to": 11
 }
 ```
 
-`content`, `posting_date`, `deadline` and `assigned_to` are optional. With `assigned_to`
-the card starts as `todo` (this also needs `can_assign`), otherwise as `new`.
+`content`, `notes`, `posting_date`, `deadline` and `assigned_to` are optional. With
+`assigned_to` the card starts as `todo` (this also needs `can_assign`), otherwise as `new`.
+
+**The title is optional, and the app does not ask for one.** A card is named after its content
+type and a number: `Poster 3`. Without a `title` (or with a blank one) the backend gives it the name
+`<content type name> <n>`, where `n` is one more than the highest number already used by this
+client's cards **of the same month** whose title is `<same type name> <number>` (compared without
+regard to case). So numbers are per client, per month and per type, and a number is never given
+out twice while a card holds it (deleting card 2 of 3 makes the next one 4, not 3). A `title`
+that is given is kept as typed (trimmed, 1 to 120 characters) and does not use up a number.
+
+`content` is what the post says (caption, talking points). `notes` is a separate, optional place for
+instructions to the designer (colours, size, where the logo goes). The writer's form requires
+`content`; the API does not.
 
 - `403` no permission (creating, or assigning).
 - `422` validation (below).
 
 ### `PATCH /tasks/{id}`
 
-Partial update, `200` `Task`. Editing content fields (`title`, `content`,
+Partial update, `200` `Task`. Editing content fields (`title`, `content`, `notes`,
 `content_type_id`, `month`, `posting_date`, `deadline`) needs `can_create_content`;
 changing `assigned_to` needs `can_assign`.
 
@@ -450,8 +463,10 @@ Needs `can_create_content`. `204` with no body.
 
 ### Card validation
 
-- `title`: trimmed, inner spaces collapsed, 1 to 120 characters.
+- `title`: optional. When given: trimmed, inner spaces collapsed, 1 to 120 characters. An
+  explicit empty title in `PATCH` is `422`. When absent on create: named automatically (above).
 - `content`: at most 5000 characters, may be empty.
+- `notes`: at most 2000 characters, may be empty (`"Use 2000 characters or fewer for the notes."`).
 - `client_id`: an existing, non-archived client.
 - `month`: `YYYY-MM`, this month (IST) or later, at most 24 months ahead.
 - `content_type_id`: an active type that is in the client's plan **for that month**.
@@ -459,6 +474,11 @@ Needs `can_create_content`. `204` with no body.
 - `posting_date`, `deadline`: real calendar dates (`2026-02-30` is invalid). If both
   are given, the deadline must not be after the posting date.
 - `assigned_to`: an active user whose team has `can_receive_tasks`.
+
+**Renaming.** When `content_type_id` or `month` changes in a `PATCH` without a `title`, a card
+whose current title is the app's own (`<its old type's name> <number>`) is renamed with the new
+type and the next free number there (`Poster 3` becomes `Reel 1`). A title somebody chose is
+kept, and a `title` in the request always wins. Editing anything else never renames a card.
 
 ## Notifications
 
@@ -489,7 +509,7 @@ Nobody is told about something they did themselves (an admin who approves a card
 |---|---|---|
 | a card is created with a designer, or a designer is given a card | that designer | `assigned` |
 | the designer is taken off, or replaced | the designer who had it | `unassigned` |
-| the brief of a card that has a designer changes (title, content, type, month, deadline, posting date) and the designer stays | that designer | `updated` |
+| the brief of a card that has a designer changes (title, content, notes, type, month, deadline, posting date) and the designer stays | that designer | `updated` |
 | a card that has a designer is deleted | that designer (`task_id` null) | `deleted` |
 | a design is submitted (also a resubmission) | every **active member whose team has `can_review`**. Admins are not included: they have the dashboard, and would hear about every card in the company. | `submitted` |
 | a design is approved | the card's designer | `approved` |
@@ -749,3 +769,10 @@ was never written.
 - Notifications: the list is the caller's own, newest first, `unread_count` ignores paging and the
   `unread` filter, someone else's line is 404 on mark-read, mark-read twice is fine, read-all only
   touches the caller's own lines.
+- Cards: a card created without a title (or a blank one) is named `<type> <n>`, numbered per client, month
+  and type; a title that is given is kept and uses up no number; deleting a card never makes two cards
+  share a name; names that merely look alike (`Poster 12 extra`) are ignored when counting.
+- Cards: changing the type or month renames a card that has the app's own name, keeps a chosen name, and
+  an explicit `title` always wins; editing other fields renames nothing.
+- Cards: `notes` are optional, trimmed, at most 2000 characters, can be changed and emptied, and changing
+  them tells the designer (`updated`) while saving the same notes tells nobody.

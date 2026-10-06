@@ -49,6 +49,7 @@ import type {
 const STORAGE_KEY = demoStorageKey("tasks");
 const MAX_TITLE_LENGTH = 120;
 const MAX_CONTENT_LENGTH = 5000;
+const MAX_NOTES_LENGTH = 2000;
 const MAX_MONTHS_AHEAD = 24;
 const MAX_LIST_LIMIT = 500;
 
@@ -67,6 +68,7 @@ interface TaskRow {
   month: string;
   title: string;
   content: string;
+  notes: string;
   status: TaskStatus;
   created_by_id: number;
   assigned_to_id: number | null;
@@ -116,21 +118,6 @@ interface State {
 // ---- seed data -----------------------------------------------------------
 // Built around the real current month so the demo always looks alive:
 // this month is mostly written and in progress, next month is just starting.
-
-const TITLE_IDEAS = [
-  "Festive offer",
-  "Behind the scenes",
-  "Weekend combo",
-  "New arrival",
-  "Customer story",
-  "Tips and tricks",
-  "Team spotlight",
-  "Limited offer",
-  "Product highlight",
-  "Seasonal special",
-  "Quick recipe",
-  "Announcement",
-];
 
 const MARKETING_USER_ID = 2;
 const WORKER_IDS = [11, 12, 3, 13];
@@ -280,7 +267,7 @@ function buildSeed(): State {
 
       // The bell: the last thing that happened to a recent card, for whoever it
       // concerned. Older ones are marked read, so the bell looks lived in.
-      const title = `${TITLE_IDEAS[(id + index) % TITLE_IDEAS.length]} ${typeName.toLowerCase()} ${alreadyAdded + index + 1}`;
+      const title = `${typeName} ${alreadyAdded + index + 1}`;
       const card = cardLabel(title, findClientRow(clientId)?.name);
       const hoursAgo = (nowDate.getTime() - finalAt.getTime()) / (60 * 60 * 1000);
       const concern: { userId: number; type: NotificationType; note?: string } | null =
@@ -340,6 +327,9 @@ function buildSeed(): State {
         title,
         content:
           "Caption and talking points for this piece, written by the content team.",
+        // Every third card carries a note, so the demo shows what notes look like
+        notes:
+          id % 3 === 0 ? "Use the brand colours and keep the logo in the top-left corner." : "",
         status,
         created_by_id: MARKETING_USER_ID,
         assigned_to_id: hasDesigner ? WORKER_IDS[id % WORKER_IDS.length] : null,
@@ -417,6 +407,7 @@ function load(): State {
       saved.nextNotificationId ??= 1;
       saved.tasks.forEach((row) => {
         row.reviews ??= [];
+        row.notes ??= "";
       });
 
       state = saved;
@@ -555,6 +546,7 @@ function toTask(row: TaskRow): Task {
     month: row.month,
     title: row.title,
     content: row.content,
+    notes: row.notes,
     status: row.status,
     created_by: toPerson(row.created_by_id),
     assigned_to: row.assigned_to_id === null ? null : toPerson(row.assigned_to_id),
@@ -582,6 +574,50 @@ function cleanTitle(title: string) {
   }
 
   return cleaned;
+}
+
+function cleanNotes(notes: string) {
+  const cleaned = notes.trim();
+
+  if (cleaned.length > MAX_NOTES_LENGTH) {
+    throw fakeApiError(
+      422,
+      `Use ${MAX_NOTES_LENGTH} characters or fewer for the notes.`,
+    );
+  }
+
+  return cleaned;
+}
+
+function escapeRegExp(text: string) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Whether a title is one the app gave: the type's name and a number ("Poster 3")
+function isAutoTitle(title: string, typeName: string) {
+  return new RegExp(`^${escapeRegExp(typeName)} \\d+$`, "i").test(title);
+}
+
+// "Poster 3": the content type's name and the next free number among that
+// client's cards of the month. Numbers are never reused while a card holds them,
+// so deleting card 2 does not give the next card the name "Poster 3" twice.
+function autoTitle(clientId: number, month: string, typeName: string, exceptId?: number) {
+  const pattern = new RegExp(`^${escapeRegExp(typeName)} (\\d+)$`, "i");
+  let highest = 0;
+
+  for (const row of load().tasks) {
+    if (row.id === exceptId || row.client_id !== clientId || row.month !== month) {
+      continue;
+    }
+
+    const match = pattern.exec(row.title);
+
+    if (match) {
+      highest = Math.max(highest, Number(match[1]));
+    }
+  }
+
+  return `${typeName} ${highest + 1}`;
 }
 
 function cleanContent(content: string) {
@@ -727,13 +763,23 @@ export function createTask(request: TaskCreateRequest): Task {
 
   validateMonth(request.month);
 
-  const title = cleanTitle(request.title);
   const content = cleanContent(request.content ?? "");
+  const notes = cleanNotes(request.notes ?? "");
   const postingDate = request.posting_date ?? null;
   const deadline = request.deadline ?? null;
 
   validateDates(postingDate, deadline);
   validateContentType(client.id, request.month, request.content_type_id);
+
+  // No title given: the card is named after its content type
+  const title =
+    request.title !== undefined && request.title.trim() !== ""
+      ? cleanTitle(request.title)
+      : autoTitle(
+          client.id,
+          request.month,
+          findContentType(request.content_type_id)?.name ?? "Card",
+        );
 
   if (assigneeId !== null) {
     validateAssignee(assigneeId);
@@ -747,6 +793,7 @@ export function createTask(request: TaskCreateRequest): Task {
     month: request.month,
     title,
     content,
+    notes,
     status: assigneeId === null ? "new" : "todo",
     created_by_id: user.id,
     assigned_to_id: assigneeId,
@@ -786,6 +833,7 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     request.month !== undefined ||
     request.title !== undefined ||
     request.content !== undefined ||
+    request.notes !== undefined ||
     request.posting_date !== undefined ||
     request.deadline !== undefined;
   const editsAssignee = request.assigned_to !== undefined;
@@ -822,9 +870,21 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     validateMonth(month);
   }
 
-  const title = request.title !== undefined ? cleanTitle(request.title) : row.title;
   const content =
     request.content !== undefined ? cleanContent(request.content) : row.content;
+  const notes = request.notes !== undefined ? cleanNotes(request.notes) : row.notes;
+
+  // A card named by the app is renamed when it changes type or month ("Poster 3"
+  // becomes "Reel 1"). A name somebody chose is kept.
+  const oldTypeName = findContentType(row.content_type_id)?.name;
+  const newTypeName = findContentType(contentTypeId)?.name;
+  const moved = row.content_type_id !== contentTypeId || row.month !== month;
+  const title =
+    request.title !== undefined
+      ? cleanTitle(request.title)
+      : moved && oldTypeName && newTypeName && isAutoTitle(row.title, oldTypeName)
+        ? autoTitle(row.client_id, month, newTypeName, row.id)
+        : row.title;
 
   validateDates(postingDate, deadline);
 
@@ -842,6 +902,7 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     row.content_type_id !== contentTypeId ||
     row.title !== title ||
     row.content !== content ||
+    row.notes !== notes ||
     row.posting_date !== postingDate ||
     row.deadline !== deadline;
   const designerBefore = row.assigned_to_id;
@@ -850,6 +911,7 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
   row.content_type_id = contentTypeId;
   row.title = title;
   row.content = content;
+  row.notes = notes;
   row.posting_date = postingDate;
   row.deadline = deadline;
 
