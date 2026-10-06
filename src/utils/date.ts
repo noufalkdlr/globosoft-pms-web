@@ -53,3 +53,20 @@ export function addDaysToIsoDate(value: string, days: number): string {
 
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
 }
+
+// "2026-10-06" -> "Tuesday, 6 October 2026". Built from parts because browsers
+// differ on the comma, and this should read the same everywhere.
+export function formatLongDate(value: string): string {
+  const [year, month, day] = value.split("-").map(Number);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).formatToParts(new Date(Date.UTC(year, month - 1, day)));
+
+  const part = (type: string) => parts.find((item) => item.type === type)?.value;
+
+  return `${part("weekday")}, ${part("day")} ${part("month")} ${part("year")}`;
+}

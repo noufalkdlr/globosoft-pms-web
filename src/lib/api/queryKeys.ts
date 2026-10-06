@@ -1,4 +1,5 @@
 import type { ClientListParams } from "../../features/clients/types/clientTypes";
+import type { ReportParams } from "../../features/reports/types/reportTypes";
 import type { TaskListParams } from "../../features/tasks/types/taskTypes";
 import type { UserListParams } from "../../features/users/types/userTypes";
 
@@ -29,5 +30,9 @@ export const queryKeys = {
   },
   teams: {
     all: ["teams"] as const,
+  },
+  reports: {
+    all: ["reports"] as const,
+    summary: (params: ReportParams) => ["reports", "summary", params] as const,
   },
 };

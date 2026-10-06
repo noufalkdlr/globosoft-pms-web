@@ -165,6 +165,15 @@ export function findAssignableUser(id: number): AssignableUser | undefined {
   return row ? (toAssignable(row) ?? undefined) : undefined;
 }
 
+// Every active Design member, without a permission check: the reports list them
+// all so that someone with nothing on their plate shows up too
+export function listActiveDesigners(): AssignableUser[] {
+  return load()
+    .users.map(toAssignable)
+    .filter((item): item is AssignableUser => item !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function listAssignableUsers(): AssignableUser[] {
   const user = readSession();
 
@@ -187,7 +196,7 @@ export function listAssignableUsers(): AssignableUser[] {
 // Who is asking is read from the saved table, not from the session copy: an
 // admin who was demoted or deactivated a moment ago is refused at once, like
 // the real backend refuses a token for an inactive user.
-function requireAdmin(): UserRow {
+export function requireAdmin(): UserRow {
   const session = readSession();
 
   if (!session) {

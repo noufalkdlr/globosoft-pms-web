@@ -460,6 +460,96 @@ Needs `can_create_content`. `204` with no body.
   are given, the deadline must not be after the posting date.
 - `assigned_to`: an active user whose team has `can_receive_tasks`.
 
+## Reports
+
+Admin only (`401` without a session or for a deactivated admin, `403` for a member). The
+dashboard replaces the report that used to be typed by hand every evening.
+
+### Status history (`task_events`)
+
+A daily report needs to know **when** things happened, and a card only remembers its last
+change. So the backend keeps a history, one row each time a card's status changes:
+
+| column | meaning |
+|---|---|
+| `id` | |
+| `task_id` | the card |
+| `from_status` | `null` for the first row, when the card was created |
+| `to_status` | `new`, `todo`, `ongoing`, `submitted`, `fix` or `done` |
+| `actor_id` | who did it |
+| `created_at` | when (UTC) |
+
+Write a row **in the same transaction** as the status change, in every place a status changes:
+creating a card (`null` to `new`, and `new` to `todo` too if it was created with a designer),
+assigning or un-assigning (`new` and `todo`), and every move in `PATCH /tasks/{id}/status`.
+Changing the designer of a card that is already `todo`, or editing its text, is **not** a
+status change and writes nothing. Use the same timestamp for the `reviews` row of an approval
+or rejection. Index `(created_at)` and `(task_id)`. Rows of deleted cards are ignored.
+
+### `GET /reports/summary`
+
+Query: `period` (`day` or `month`, required), then `date` (`YYYY-MM-DD`, default today in
+IST) for a day, or `month` (`YYYY-MM`, default this month) for a month.
+
+- `422` `"Choose day or month."`, `"Enter a valid date."`, `"Enter a valid month."`
+
+```json
+{
+  "period": "day",
+  "date": "2026-10-06",
+  "month": "2026-10",
+  "from": "2026-10-06",
+  "to": "2026-10-06",
+  "status_counts": { "new": 2, "todo": 7, "ongoing": 7, "submitted": 4, "fix": 1, "done": 23 },
+  "activity": { "created": 3, "assigned": 2, "started": 4, "submitted": 5, "approved": 3, "sent_back": 1 },
+  "plan": { "target": 60, "written": 44, "delivered": 23 },
+  "overdue": 3,
+  "by_client": [
+    {
+      "client": { "id": 3, "name": "Kerala Spice", "is_archived": false },
+      "target": 10, "written": 4, "delivered": 2, "remaining": 8,
+      "overdue": 2, "late": 2,
+      "activity": { "submitted": 0, "approved": 1 }
+    }
+  ],
+  "by_designer": [
+    {
+      "designer": { "id": 11, "name": "Anu Mathew" },
+      "todo": 1, "ongoing": 2, "submitted": 1, "fix": 0, "delivered": 5,
+      "activity": { "started": 1, "submitted": 2, "approved": 1, "sent_back": 0 }
+    }
+  ]
+}
+```
+
+**What each number means** (the dashboard prints these, so they must not drift):
+
+- `month`: the month the numbers are about. For a day it is the month of that day.
+- `from` and `to`: the first and last day of the period, in IST.
+- `status_counts`: the **month's own cards** (cards whose `month` is this month) by their
+  status **right now**.
+- `activity`: counted from `task_events` whose IST date is inside the period, for cards that
+  still exist. `created` = `from_status` is null. `assigned` = `new` to `todo`. `started` =
+  to `ongoing`. `submitted` = to `submitted`. `approved` = to `done`. `sent_back` = to `fix`.
+  Anything else (a card going back to `new`) is not counted. **The day is the day in India:**
+  an event at 18:45 UTC on the 6th is 00:15 on the 7th.
+- `plan.target`: the sum of the clients' monthly plans for that month. `written`: the month's
+  cards. `delivered`: the month's `done` cards.
+- `overdue`: all unfinished cards, any month, whose `deadline` is before today.
+- `by_client`: every client that has a plan or cards for the month, **except** an archived
+  client with no cards that month (the same rule as `GET /clients/overview`). `remaining` =
+  `target` minus `delivered`, never below zero. `overdue` and `late` (unfinished cards of
+  earlier months) are right now. `activity` is for the period. Sorted: most `overdue`, then
+  most `remaining`, then name. **"Behind" on the dashboard means `overdue` above zero.**
+- `by_designer`: every **active** Design member, plus anyone who still holds a card (a
+  deactivated designer with cards stays on the report). `todo`, `ongoing`, `submitted`, `fix`
+  are their unfinished cards of **any month**, right now. `delivered` is the month's `done`
+  cards that are theirs. `activity` counts events on cards that are theirs. Sorted by name.
+
+Everything marked "right now" is the state at the moment of the request, also for a report
+about a day in the past: the backend does not rebuild old states. Do the counting in SQL
+(`GROUP BY`), not in Python loops.
+
 ## Month overview
 
 ### `GET /clients/overview?month=2026-11`
@@ -558,3 +648,12 @@ was never written.
   after deactivation.
 - Assignable users: new Design members appear, deactivated ones and people who moved to Marketing
   disappear, and cards keep showing the name of someone who was deactivated.
+- Reports: admin only (401 / 403); a bad `period`, date or month is 422 with its message.
+- Reports: every card's history starts with a `null` to `new` row, follows its moves in order, and
+  its last row is the card's current status; an assignment or un-assignment writes a row, a change
+  of designer while `todo` or an edit of text writes none; a refused move writes none.
+- Reports: the day is the day in India (an event at 18:45 UTC on the 6th is counted on the 7th, one
+  at 18:15 UTC on the 7th is still the 7th).
+- Reports: the monthly numbers agree with counting the cards by hand; archived clients without
+  cards that month are left out; an idle active designer still has a row; a deactivated designer
+  with cards keeps theirs; a deleted card disappears from every number.

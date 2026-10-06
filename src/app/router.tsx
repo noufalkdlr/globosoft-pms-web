@@ -6,8 +6,8 @@ import { LoginRoute } from "./routes/public/LoginRoute";
 import { BoardRoute } from "./routes/BoardRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { ClientsRoute } from "./routes/ClientsRoute";
-import { DashboardRoute } from "./routes/DashboardRoute";
 import { HomeRoute } from "./routes/HomeRoute";
+import { LazyDashboardRoute } from "./routes/LazyDashboardRoute";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
 import { RequirePermission } from "./routes/RequirePermission";
@@ -65,7 +65,7 @@ export const router = createBrowserRouter([
           </RequireRole>
         ),
         children: [
-          { path: ROUTES.dashboard, element: <DashboardRoute /> },
+          { path: ROUTES.dashboard, element: <LazyDashboardRoute /> },
           { path: ROUTES.admin.users, element: <UsersRoute /> },
         ],
       },

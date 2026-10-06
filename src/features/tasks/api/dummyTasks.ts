@@ -1,6 +1,6 @@
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { can } from "../../../lib/permissions";
-import { isValidIsoDate } from "../../../utils/date";
+import { getTodayIst, isValidIsoDate } from "../../../utils/date";
 import { addMonths, getCurrentMonth, isValidMonth } from "../../../utils/month";
 import { readSession } from "../../auth/api/dummySession";
 import {
@@ -73,10 +73,25 @@ interface TaskRow {
   updated_at: string;
 }
 
+// One change of a card's status: created, given to a designer, started,
+// submitted, approved or sent back. This is the history the daily report
+// counts. (The real backend keeps the same thing in a `task_events` table.)
+interface TaskEventRow {
+  id: number;
+  task_id: number;
+  // null for the very first event, when the card was created
+  from_status: TaskStatus | null;
+  to_status: TaskStatus;
+  actor_id: number;
+  created_at: string;
+}
+
 interface State {
   tasks: TaskRow[];
   nextId: number;
   nextReviewId: number;
+  events: TaskEventRow[];
+  nextEventId: number;
 }
 
 // ---- seed data -----------------------------------------------------------
@@ -105,15 +120,44 @@ function pad(value: number) {
   return String(value).padStart(2, "0");
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The statuses a card passes through on its way to its current one
+const SEED_PATH: Record<TaskStatus, TaskStatus[]> = {
+  new: ["new"],
+  todo: ["new", "todo"],
+  ongoing: ["new", "todo", "ongoing"],
+  submitted: ["new", "todo", "ongoing", "submitted"],
+  fix: ["new", "todo", "ongoing", "submitted", "fix"],
+  done: ["new", "todo", "ongoing", "submitted", "done"],
+};
+
+// A working-hours moment (IST) some days ago, different for every card, never
+// in the future. Gives the daily report something to count for the last ten days.
+function seedMoment(id: number, now: Date): Date {
+  const daysAgo = (id * 5) % 10;
+  const day = getTodayIst(new Date(now.getTime() - daysAgo * DAY_MS));
+  const moment = new Date(
+    `${day}T${pad(9 + ((id * 7) % 9))}:${pad((id * 13) % 60)}:00+05:30`,
+  );
+
+  return moment.getTime() > now.getTime()
+    ? new Date(now.getTime() - ((id % 4) + 1) * 60 * 60 * 1000)
+    : moment;
+}
+
 function buildSeed(): State {
   const month = getCurrentMonth();
   const nextMonth = addMonths(month, 1);
-  const now = new Date().toISOString();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
   const previousMonth = addMonths(month, -1);
   const tasks: TaskRow[] = [];
+  const events: TaskEventRow[] = [];
   const counters = new Map<string, number>();
   let nextId = 1;
   let nextReviewId = 1;
+  let nextEventId = 1;
 
   function addCards(
     clientId: number,
@@ -132,6 +176,11 @@ function buildSeed(): State {
     statuses.forEach((status, index) => {
       const id = nextId++;
       const deadlineDay = 8 + ((id * 3) % 16);
+      // The moment of the card's last status change; earlier steps are one or
+      // two days before each other
+      const finalAt = seedMoment(id, nowDate);
+      const stepMs = ((id % 2) + 1) * DAY_MS;
+      const assigneeId = WORKER_IDS[id % WORKER_IDS.length];
       const hasDesigner = status !== "new";
       const hasFile =
         status === "submitted" || status === "done" || status === "fix";
@@ -146,7 +195,7 @@ function buildSeed(): State {
           decision: "approved",
           comment: null,
           reviewer_id: MARKETING_USER_ID,
-          created_at: now,
+          created_at: finalAt.toISOString(),
         });
       } else if (status === "fix") {
         reviews.push({
@@ -154,9 +203,30 @@ function buildSeed(): State {
           decision: "rejected",
           comment: "Please make the logo bigger and fix the offer text.",
           reviewer_id: MARKETING_USER_ID,
-          created_at: now,
+          created_at: finalAt.toISOString(),
         });
       }
+
+      // The history that led to this status
+      const path = SEED_PATH[status];
+
+      path.forEach((to, step) => {
+        const stepsBeforeEnd = path.length - 1 - step;
+        // The designer starts and submits; Marketing writes, assigns and reviews
+        const actorId =
+          to === "ongoing" || to === "submitted" ? assigneeId : MARKETING_USER_ID;
+
+        events.push({
+          id: nextEventId++,
+          task_id: id,
+          from_status: step === 0 ? null : path[step - 1],
+          to_status: to,
+          actor_id: actorId,
+          created_at: new Date(
+            finalAt.getTime() - stepsBeforeEnd * stepMs,
+          ).toISOString(),
+        });
+      });
 
       tasks.push({
         id,
@@ -210,7 +280,7 @@ function buildSeed(): State {
   addCards(5, 1, month, repeat("done", 6));
   addCards(5, 6, month, ["ongoing"]);
 
-  return { tasks, nextId, nextReviewId };
+  return { tasks, nextId, nextReviewId, events, nextEventId };
 }
 
 let state: State | null = null;
@@ -226,8 +296,11 @@ function load(): State {
     if (raw) {
       const saved = JSON.parse(raw) as State;
 
-      // Data saved before reviews existed: fill in what is missing
+      // Data saved before reviews or the status history existed: fill in what
+      // is missing (older cards simply have no history)
       saved.nextReviewId ??= 1;
+      saved.events ??= [];
+      saved.nextEventId ??= 1;
       saved.tasks.forEach((row) => {
         row.reviews ??= [];
       });
@@ -298,6 +371,27 @@ function nextTimestamp(previous: string) {
   const now = new Date().toISOString();
 
   return now > previous ? now : new Date(Date.parse(previous) + 1).toISOString();
+}
+
+// Writes one line of the status history. Called from every place a status changes.
+function recordEvent(
+  row: TaskRow,
+  from: TaskStatus | null,
+  to: TaskStatus,
+  actorId: number,
+  at: string,
+) {
+  const current = load();
+
+  current.events.push({
+    id: current.nextEventId,
+    task_id: row.id,
+    from_status: from,
+    to_status: to,
+    actor_id: actorId,
+    created_at: at,
+  });
+  current.nextEventId += 1;
 }
 
 function toTask(row: TaskRow): Task {
@@ -520,6 +614,13 @@ export function createTask(request: TaskCreateRequest): Task {
 
   current.tasks.push(row);
   current.nextId += 1;
+
+  recordEvent(row, null, "new", user.id, now);
+
+  if (assigneeId !== null) {
+    recordEvent(row, "new", "todo", user.id, now);
+  }
+
   save();
 
   return toTask(row);
@@ -596,6 +697,7 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
   row.deadline = deadline;
 
   if (request.assigned_to !== undefined) {
+    const statusBefore = row.status;
     row.assigned_to_id = request.assigned_to;
 
     // Assigning starts the card's life as a task; removing the designer undoes it
@@ -603,6 +705,10 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
       row.status = "todo";
     } else if (request.assigned_to === null && row.status === "todo") {
       row.status = "new";
+    }
+
+    if (row.status !== statusBefore) {
+      recordEvent(row, statusBefore, row.status, user.id, new Date().toISOString());
     }
   }
 
@@ -747,8 +853,10 @@ export function changeTaskStatus(
     };
   }
 
+  const statusBefore = row.status;
   row.status = request.status;
   row.file_link = fileLink;
+  recordEvent(row, statusBefore, request.status, user.id, now);
 
   if (review) {
     review.id = load().nextReviewId;
@@ -886,4 +994,52 @@ export function computeMonthOverview(month: string): ClientMonthOverview[] {
   }
 
   return overviews.sort((a, b) => a.client.name.localeCompare(b.client.name));
+}
+
+// ---- what the reports read ---------------------------------------------------
+// The reports module counts cards and history without going through the
+// permission checks above (it checks "admin" itself).
+
+export interface ReportTaskRow {
+  id: number;
+  client_id: number;
+  month: string;
+  status: TaskStatus;
+  assigned_to_id: number | null;
+  deadline: string | null;
+}
+
+export interface ReportEventRow {
+  task_id: number;
+  from_status: TaskStatus | null;
+  to_status: TaskStatus;
+  actor_id: number;
+  created_at: string;
+}
+
+export function getReportSource(): {
+  tasks: ReportTaskRow[];
+  events: ReportEventRow[];
+} {
+  const { tasks, events } = load();
+
+  return {
+    tasks: tasks.map(({ id, client_id, month, status, assigned_to_id, deadline }) => ({
+      id,
+      client_id,
+      month,
+      status,
+      assigned_to_id,
+      deadline,
+    })),
+    events: events.map(
+      ({ task_id, from_status, to_status, actor_id, created_at }) => ({
+        task_id,
+        from_status,
+        to_status,
+        actor_id,
+        created_at,
+      }),
+    ),
+  };
 }
