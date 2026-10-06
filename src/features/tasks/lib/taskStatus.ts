@@ -23,3 +23,13 @@ export const STATUS_VARIANT: Record<TaskStatus, BadgeVariant> = {
   fix: "danger",
   done: "success",
 };
+
+// The board's columns, left to right
+export const BOARD_COLUMNS: TaskStatus[] = [
+  "new",
+  "todo",
+  "ongoing",
+  "submitted",
+  "fix",
+  "done",
+];

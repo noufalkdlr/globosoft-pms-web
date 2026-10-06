@@ -44,6 +44,7 @@ const STORAGE_KEY = "pms-dummy-tasks";
 const MAX_TITLE_LENGTH = 120;
 const MAX_CONTENT_LENGTH = 5000;
 const MAX_MONTHS_AHEAD = 24;
+const MAX_LIST_LIMIT = 500;
 
 interface ReviewRow {
   id: number;
@@ -435,9 +436,11 @@ export function listTasks(params: TaskListParams = {}): PaginatedResponse<Task> 
     assigned_to,
     status,
     include_late = false,
-    limit = 50,
+    limit: requestedLimit = 50,
     offset = 0,
   } = params;
+  // Same cap the backend applies: the board loads a whole month in one request
+  const limit = Math.min(Math.max(requestedLimit, 1), MAX_LIST_LIMIT);
 
   const matches = load()
     .tasks.filter(

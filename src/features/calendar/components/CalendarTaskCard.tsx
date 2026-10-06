@@ -4,6 +4,7 @@ import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { formatShortDate } from "../../../utils/date";
+import { isOverdue } from "../../tasks/lib/taskDates";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
 
 import type { Task } from "../../tasks/types/taskTypes";
@@ -36,8 +37,7 @@ export function CalendarTaskCard({
   onDelete,
   onAssign,
 }: CalendarTaskCardProps) {
-  const isOverdue =
-    task.deadline !== null && task.deadline < today && task.status !== "done";
+  const overdue = isOverdue(task, today);
 
   // Once the designer starts, the brief is fixed: no editing, deleting or reassigning
   const isChangeable = task.status === "new" || task.status === "todo";
@@ -63,11 +63,11 @@ export function CalendarTaskCard({
         {task.deadline && (
           <span
             className={
-              isOverdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"
+              overdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"
             }
           >
             Due {formatShortDate(task.deadline)}
-            {isOverdue && " (overdue)"}
+            {overdue && " (overdue)"}
           </span>
         )}
 

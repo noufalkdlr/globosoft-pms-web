@@ -3,6 +3,7 @@ import { Link } from "react-router";
 
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
+import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { cn } from "../../../utils/cn";
 import { formatMonth, getCurrentMonth } from "../../../utils/month";
@@ -14,7 +15,6 @@ import { ClientMonthPanel } from "./ClientMonthPanel";
 import { ClientPicker } from "./ClientPicker";
 import { ClientRail } from "./ClientRail";
 import { MonthOverviewPanel } from "./MonthOverviewPanel";
-import { MonthSwitcher } from "./MonthSwitcher";
 
 function PanelSkeleton() {
   return (

@@ -13,7 +13,8 @@ as a reference implementation (and as the source of backend test cases).
   list form `{ "detail": [{ "loc": [...], "msg": "...", "type": "..." }] }`;
   the frontend shows the first `msg`.
 - Months are strings like `"2026-11"`. A month starts and ends in **IST (Asia/Kolkata)**.
-- List endpoints take `limit` (default 50, max 100) and `offset`, and answer
+- List endpoints take `limit` (default 50, max 100; `GET /tasks` allows up to 500 because the
+  board loads a whole month at once) and `offset`, and answer
   `{ "items": [...], "total": 123, "limit": 50, "offset": 0 }`.
 - Permission names (`can_manage_clients` ...) are flags on the user's team. An
   **admin has every permission** (admins have no team).
@@ -455,3 +456,4 @@ was never written.
   a review and shows as `latest_review`; resubmitting then approving makes the approval the
   latest review and keeps the rejection in the history.
 - Cards: `include_late` adds earlier months' unfinished cards and never earlier `done` ones.
+- Cards: `limit` above 500 is capped at 500; `total` still reports the full count.

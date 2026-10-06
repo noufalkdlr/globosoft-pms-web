@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Badge } from "../../../components/ui/Badge";
-import { addMonths, formatMonth } from "../../../utils/month";
+import { addMonths, formatMonth } from "../../utils/month";
+import { Badge } from "./Badge";
 
 // How far the calendar can be browsed
 const MONTHS_BACK = 24;
