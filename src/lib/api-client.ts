@@ -39,10 +39,10 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryableRequestConfig | undefined;
 
-    // A 401 from login (wrong password) or from refresh itself must never
+    // A 401 from the Google login call or from refresh itself must never
     // trigger another refresh, otherwise the real error would be swallowed.
     const isAuthRequest =
-      originalRequest?.url === AUTH_ENDPOINTS.login ||
+      originalRequest?.url === AUTH_ENDPOINTS.google ||
       originalRequest?.url === AUTH_ENDPOINTS.refresh;
 
     if (

@@ -2,7 +2,7 @@
 // definitions exactly, otherwise FastAPI answers with a 307 redirect.
 
 export const AUTH_ENDPOINTS = {
-  login: "/auth/login",
+  google: "/auth/google",
   logout: "/auth/logout",
   refresh: "/auth/refresh",
   me: "/auth/me",

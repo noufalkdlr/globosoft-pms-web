@@ -3,16 +3,16 @@ import { useNavigate } from "react-router";
 
 import { getHomeRoute } from "../../../lib/routes";
 import { useAuthStore } from "../../../stores/authStore";
-import { loginApi } from "../api/loginApi";
+import { googleAuthApi } from "../api/googleAuthApi";
 
-import type { LoginRequest, LoginResponse } from "../types/authTypes";
+import type { GoogleLoginRequest, LoginResponse } from "../types/authTypes";
 
-export function useLogin() {
+export function useGoogleAuth() {
   const navigate = useNavigate();
   const setUser = useAuthStore((state) => state.setUser);
 
-  return useMutation<LoginResponse, Error, LoginRequest>({
-    mutationFn: loginApi,
+  return useMutation<LoginResponse, Error, GoogleLoginRequest>({
+    mutationFn: googleAuthApi,
     onSuccess: ({ user }) => {
       setUser(user);
       navigate(getHomeRoute(user), { replace: true });

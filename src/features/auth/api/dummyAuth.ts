@@ -5,45 +5,57 @@ import type { AuthUser, Team } from "../types/authTypes";
 // TEMPORARY: simulates the FastAPI auth backend so the UI can be built and
 // demoed first. Delete this file once the real API is connected.
 //
-// Dummy login rules (any non-empty password works; "wrong" simulates a 401):
-//   admin...@...   -> admin (lands on the reports dashboard)
-//   social...@...  -> Social Media team (can assign + review)
-//   content...@... -> Content team (can create content)
-//   3d...@...      -> 3D team
-//   anything else  -> Design team
+// Only the accounts in DEMO_ACCOUNTS are "added by an admin". Any other
+// Google account gets the same 403 the real backend will return.
 
 const SESSION_KEY = "pms-dummy-session";
 
 const TEAMS = {
-  design: {
+  marketing: {
     id: 1,
-    name: "Design",
-    can_create_content: false,
-    can_assign: false,
-    can_review: false,
-  },
-  threeD: {
-    id: 2,
-    name: "3D",
-    can_create_content: false,
-    can_assign: false,
-    can_review: false,
-  },
-  content: {
-    id: 3,
-    name: "Content",
+    name: "Marketing",
+    can_manage_clients: true,
     can_create_content: true,
-    can_assign: false,
-    can_review: false,
-  },
-  social: {
-    id: 4,
-    name: "Social Media",
-    can_create_content: false,
     can_assign: true,
     can_review: true,
   },
+  design: {
+    id: 2,
+    name: "Design",
+    can_manage_clients: false,
+    can_create_content: false,
+    can_assign: false,
+    can_review: false,
+  },
 } satisfies Record<string, Team>;
+
+// Shown in the demo account chooser
+export const DEMO_ACCOUNTS: AuthUser[] = [
+  {
+    id: 1,
+    name: "Admin Demo",
+    email: "admin.demo@gmail.com",
+    role: "admin",
+    team: null,
+  },
+  {
+    id: 2,
+    name: "Marketing Demo",
+    email: "marketing.demo@gmail.com",
+    role: "member",
+    team: TEAMS.marketing,
+  },
+  {
+    id: 3,
+    name: "Designer Demo",
+    email: "designer.demo@gmail.com",
+    role: "member",
+    team: TEAMS.design,
+  },
+];
+
+// An account that exists on Google but was never added by an admin
+export const NOT_ADDED_EMAIL = "someone.else@gmail.com";
 
 export function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -64,36 +76,28 @@ export function fakeApiError(status: number, detail: string) {
   );
 }
 
-function toDisplayName(localPart: string) {
-  return localPart
-    .split(/[._-]+/)
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
+// Same rule the backend must apply: Gmail ignores case, dots and "+tag" parts,
+// so "Noufal.Globosoft@gmail.com" and "noufalglobosoft@gmail.com" are one
+// account and must match the same row.
+function normalizeEmail(email: string) {
+  const [localPart, domain] = email.trim().toLowerCase().split("@");
+
+  if (domain === "gmail.com") {
+    return `${localPart.split("+")[0].replaceAll(".", "")}@gmail.com`;
+  }
+
+  return `${localPart}@${domain}`;
 }
 
-export function resolveDummyUser(email: string): AuthUser {
-  const normalizedEmail = email.trim().toLowerCase();
-  const localPart = normalizedEmail.split("@")[0];
-  const base = { name: toDisplayName(localPart), email: normalizedEmail };
+// Returns undefined for an account that was not added by an admin.
+// In the real flow the backend first verifies the Google token, then does
+// this lookup against the users table (and checks is_active).
+export function resolveDummyUser(email: string): AuthUser | undefined {
+  const normalized = normalizeEmail(email);
 
-  if (localPart.startsWith("admin")) {
-    return { id: 1, ...base, role: "admin", team: null };
-  }
-
-  if (localPart.startsWith("social")) {
-    return { id: 2, ...base, role: "member", team: TEAMS.social };
-  }
-
-  if (localPart.startsWith("content")) {
-    return { id: 3, ...base, role: "member", team: TEAMS.content };
-  }
-
-  if (localPart.startsWith("3d")) {
-    return { id: 4, ...base, role: "member", team: TEAMS.threeD };
-  }
-
-  return { id: 5, ...base, role: "member", team: TEAMS.design };
+  return DEMO_ACCOUNTS.find(
+    (account) => normalizeEmail(account.email) === normalized,
+  );
 }
 
 // The dummy "session" lives in localStorage so a page reload keeps the user
