@@ -24,3 +24,20 @@ export function isLate(
 export function isSafeLink(value: string | null): value is string {
   return value !== null && /^https?:\/\//i.test(value);
 }
+
+// The same check the backend applies to a design link: a real http(s) address
+export function isValidFileLink(value: string): boolean {
+  const link = value.trim();
+
+  if (link.length === 0 || link.length > 500) {
+    return false;
+  }
+
+  try {
+    const url = new URL(link);
+
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}

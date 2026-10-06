@@ -1,19 +1,42 @@
+import { useState } from "react";
+import { DragDropContext, type DragStart, type DropResult } from "@hello-pangea/dnd";
+
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
 import { Select } from "../../../components/ui/Select";
 import { useCan } from "../../../hooks/useCan";
+import { getErrorMessage } from "../../../lib/api/errors";
+import { toast } from "../../../stores/toastStore";
+import { useAuthStore } from "../../../stores/authStore";
 import { getTodayIst } from "../../../utils/date";
 import { formatMonth, getCurrentMonth } from "../../../utils/month";
 import { useClients } from "../../clients/hooks/useClients";
 import { useBoardCards } from "../hooks/useBoardCards";
 import { useBoardParams } from "../hooks/useBoardParams";
+import { useChangeTaskStatus } from "../hooks/useChangeTaskStatus";
+import {
+  getAllowedMoves,
+  getMoveBlockReason,
+  getMoveRule,
+} from "../lib/taskRules";
 import { BOARD_COLUMNS } from "../lib/taskStatus";
-import { BoardColumn } from "./BoardColumn";
+import { AssignDialog } from "./AssignDialog";
+import { BoardColumn, type DropState } from "./BoardColumn";
+import { MoveDialog } from "./MoveDialog";
+import { RejectDialog } from "./RejectDialog";
+import { SubmitDialog } from "./SubmitDialog";
 
 import type { Task, TaskStatus } from "../types/taskTypes";
 
 const ALL_CLIENTS = "all";
+
+// Which dialog is open, and for which card. At most one at a time.
+type ActiveDialog =
+  | { kind: "move"; task: Task }
+  | { kind: "assign"; task: Task }
+  | { kind: "submit"; task: Task }
+  | { kind: "reject"; task: Task };
 
 function BoardSkeleton() {
   return (
@@ -61,8 +84,15 @@ export function BoardContent() {
   const canReview = useCan("can_review");
   const seesEverything = canAssign || canReview;
 
+  const user = useAuthStore((state) => state.user);
+
   const cardsQuery = useBoardCards(month, clientId);
   const clientsQuery = useClients({ is_archived: false, limit: 100 });
+  const changeStatus = useChangeTaskStatus();
+
+  const [dialog, setDialog] = useState<ActiveDialog | null>(null);
+  // The card being dragged, so every column can say whether it accepts it
+  const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
   const tasks = cardsQuery.data?.items ?? [];
   const groups = groupByStatus(tasks);
@@ -79,6 +109,72 @@ export function BoardContent() {
           ? { id: clientId, name: "Selected client" }
           : undefined))
       : undefined;
+
+  const getMoves = (task: Task) => getAllowedMoves(user, task);
+  const allowedMoves = draggedTask ? getMoves(draggedTask) : [];
+  const busyTaskId = changeStatus.isPending
+    ? changeStatus.variables?.id
+    : undefined;
+
+  function getDropState(status: TaskStatus): DropState {
+    if (!draggedTask || status === draggedTask.status) {
+      return "idle";
+    }
+
+    return allowedMoves.includes(status) ? "allowed" : "blocked";
+  }
+
+  // The one place a move starts, whether it came from a drop or from the
+  // "Move to…" list. Moves that need more (a designer, a link, a reason) open
+  // the matching dialog first; the others happen at once.
+  function requestMove(task: Task, to: TaskStatus) {
+    const reason = getMoveBlockReason(user, task, to);
+
+    if (reason) {
+      toast.error(reason);
+      return;
+    }
+
+    switch (getMoveRule(task.status, to)?.input) {
+      case "designer":
+        setDialog({ kind: "assign", task });
+        return;
+      case "file_link":
+      case "optional_file_link":
+        setDialog({ kind: "submit", task });
+        return;
+      case "comment":
+        setDialog({ kind: "reject", task });
+        return;
+      default:
+        changeStatus.mutate(
+          { id: task.id, data: { status: to, updated_at: task.updated_at } },
+          // The card has already jumped back; say why
+          { onError: (error) => toast.error(getErrorMessage(error)) },
+        );
+    }
+  }
+
+  function handleDragStart(start: DragStart) {
+    setDraggedTask(tasks.find((task) => String(task.id) === start.draggableId) ?? null);
+  }
+
+  function handleDragEnd(result: DropResult) {
+    setDraggedTask(null);
+
+    const { destination, source, draggableId } = result;
+
+    // Dropped outside a column, or back where it came from: nothing to do
+    if (!destination || destination.droppableId === source.droppableId) {
+      return;
+    }
+
+    const task = tasks.find((candidate) => String(candidate.id) === draggableId);
+
+    if (task) {
+      requestMove(task, destination.droppableId as TaskStatus);
+    }
+  }
 
   function renderBoard() {
     if (cardsQuery.isPending) {
@@ -110,23 +206,29 @@ export function BoardContent() {
 
     return (
       <>
-        {/* Keyboard users can scroll the columns sideways */}
-        <div
-          role="region"
-          aria-label="Board columns"
-          tabIndex={0}
-          className="-mx-5 flex snap-x gap-4 overflow-x-auto px-5 pb-4 md:-mx-8 md:px-8"
-        >
-          {BOARD_COLUMNS.map((status) => (
-            <BoardColumn
-              key={status}
-              status={status}
-              tasks={groups[status]}
-              boardMonth={month}
-              today={today}
-            />
-          ))}
-        </div>
+        <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          {/* Keyboard users can scroll the columns sideways */}
+          <div
+            role="region"
+            aria-label="Board columns"
+            tabIndex={0}
+            className="-mx-5 flex snap-x gap-4 overflow-x-auto px-5 pb-4 md:-mx-8 md:px-8"
+          >
+            {BOARD_COLUMNS.map((status) => (
+              <BoardColumn
+                key={status}
+                status={status}
+                tasks={groups[status]}
+                boardMonth={month}
+                today={today}
+                dropState={getDropState(status)}
+                getMoves={getMoves}
+                busyTaskId={busyTaskId}
+                onMove={(task) => setDialog({ kind: "move", task })}
+              />
+            ))}
+          </div>
+        </DragDropContext>
 
         {cardsQuery.data && cardsQuery.data.total > tasks.length && (
           <p className="mt-2 text-sm text-muted-foreground">
@@ -182,6 +284,38 @@ export function BoardContent() {
       </div>
 
       <div className="mt-6">{renderBoard()}</div>
+
+      {dialog?.kind === "move" && (
+        <MoveDialog
+          task={dialog.task}
+          moves={getMoves(dialog.task)}
+          onClose={() => setDialog(null)}
+          onChoose={(to) => {
+            setDialog(null);
+            requestMove(dialog.task, to);
+          }}
+        />
+      )}
+
+      {dialog?.kind === "assign" && (
+        <AssignDialog task={dialog.task} onClose={() => setDialog(null)} />
+      )}
+
+      {dialog?.kind === "submit" && (
+        <SubmitDialog
+          task={dialog.task}
+          changeStatus={changeStatus}
+          onClose={() => setDialog(null)}
+        />
+      )}
+
+      {dialog?.kind === "reject" && (
+        <RejectDialog
+          task={dialog.task}
+          changeStatus={changeStatus}
+          onClose={() => setDialog(null)}
+        />
+      )}
     </div>
   );
 }

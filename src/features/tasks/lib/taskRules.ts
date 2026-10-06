@@ -1,5 +1,7 @@
 import { can } from "../../../lib/permissions";
 
+import { STATUS_LABEL } from "./taskStatus";
+
 import type { AuthUser } from "../../auth/types/authTypes";
 import type { Task, TaskStatus } from "../types/taskTypes";
 
@@ -84,4 +86,33 @@ export function getAllowedMoves(
   return MOVE_RULES.filter((rule) => rule.from === task.status)
     .map((rule) => rule.to)
     .filter((to) => canMove(user, task, to));
+}
+
+// Why this person cannot make this move, in words for a message, or null when
+// they can. The same table decides, so the message always matches the rule.
+export function getMoveBlockReason(
+  user: AuthUser | null | undefined,
+  task: Pick<Task, "status" | "assigned_to">,
+  to: TaskStatus,
+): string | null {
+  const rule = getMoveRule(task.status, to);
+
+  if (!rule) {
+    return `A card that is "${STATUS_LABEL[task.status]}" can't move to "${STATUS_LABEL[to]}".`;
+  }
+
+  if (canMove(user, task, to)) {
+    return null;
+  }
+
+  switch (rule.actor) {
+    case "assigner":
+      return "Only someone who can assign cards can give a card to a designer.";
+    case "reviewer":
+      return "Only a reviewer can approve a card or send it back.";
+    case "assignee":
+      return task.assigned_to
+        ? `Only ${task.assigned_to.name}, who has this card, can move it forward.`
+        : "Only the designer who has this card can move it forward.";
+  }
 }

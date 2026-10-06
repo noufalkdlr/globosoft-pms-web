@@ -1,8 +1,11 @@
-import { ExternalLink, MessageSquareWarning } from "lucide-react";
+import { ArrowRightLeft, ExternalLink, GripVertical, MessageSquareWarning } from "lucide-react";
+
+import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { cn } from "../../../utils/cn";
 import { formatShortDate } from "../../../utils/date";
 import { formatMonth } from "../../../utils/month";
 import { isLate, isOverdue, isSafeLink } from "../lib/taskDates";
@@ -15,9 +18,24 @@ interface BoardCardProps {
   boardMonth: string;
   // Today in IST ("YYYY-MM-DD"), passed in so every card agrees on "today"
   today: string;
+  // Props for the drag handle, or null when this person cannot move the card
+  dragHandleProps: DraggableProvidedDragHandleProps | null | undefined;
+  isDragging: boolean;
+  // Opens "Move to…". Omitted when this person cannot move the card.
+  onMove?: (task: Task) => void;
+  // True while a move of this card is being saved
+  busy: boolean;
 }
 
-export function BoardCard({ task, boardMonth, today }: BoardCardProps) {
+export function BoardCard({
+  task,
+  boardMonth,
+  today,
+  dragHandleProps,
+  isDragging,
+  onMove,
+  busy,
+}: BoardCardProps) {
   const late = isLate(task, boardMonth);
   const overdue = isOverdue(task, today);
 
@@ -28,11 +46,31 @@ export function BoardCard({ task, boardMonth, today }: BoardCardProps) {
       : null;
 
   return (
-    <GlassCard className="flex flex-col gap-2.5 p-3.5">
+    <GlassCard
+      className={cn(
+        "flex flex-col gap-2.5 p-3.5",
+        isDragging && "ring-2 ring-brand/70 shadow-brand-glow",
+        busy && "opacity-70",
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
-        <p className="truncate text-xs text-muted-foreground">
-          {task.client.name}
-        </p>
+        <div className="flex min-w-0 items-center gap-1">
+          {dragHandleProps && (
+            // Dragging starts here, not on the whole card, so the links and
+            // buttons inside the card stay ordinary controls
+            <div
+              {...dragHandleProps}
+              aria-label={`Drag ${task.title}`}
+              className="-ml-1.5 grid size-7 shrink-0 cursor-grab place-items-center rounded-lg text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+            >
+              <GripVertical className="size-4" aria-hidden="true" />
+            </div>
+          )}
+          <p className="truncate text-xs text-muted-foreground">
+            {task.client.name}
+          </p>
+        </div>
+
         {late && (
           <Badge variant="danger" className="shrink-0">
             Late from {formatMonth(task.month)}
@@ -80,18 +118,33 @@ export function BoardCard({ task, boardMonth, today }: BoardCardProps) {
           <Badge variant="danger">Unassigned</Badge>
         )}
 
-        {isSafeLink(task.file_link) && (
-          <a
-            href={task.file_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex shrink-0 items-center gap-1 underline underline-offset-2 hover:text-foreground"
-          >
-            Design
-            <ExternalLink className="size-3" aria-hidden="true" />
-            <span className="sr-only">(opens in a new tab)</span>
-          </a>
-        )}
+        <span className="flex shrink-0 items-center gap-2">
+          {isSafeLink(task.file_link) && (
+            <a
+              href={task.file_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 underline underline-offset-2 hover:text-foreground"
+            >
+              Design
+              <ExternalLink className="size-3" aria-hidden="true" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          )}
+
+          {onMove && (
+            <button
+              type="button"
+              aria-label={`Move ${task.title}`}
+              title="Move to…"
+              disabled={busy}
+              onClick={() => onMove(task)}
+              className="grid size-7 place-items-center rounded-full transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ArrowRightLeft className="size-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </span>
       </div>
     </GlassCard>
   );
