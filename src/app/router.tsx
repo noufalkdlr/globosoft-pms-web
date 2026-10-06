@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 
 import { ROUTES } from "../lib/routes";
+import { AppShell } from "../components/layout/AppShell";
 import { LoginRoute } from "./routes/public/LoginRoute";
 import { BoardRoute } from "./routes/BoardRoute";
 import { DashboardRoute } from "./routes/DashboardRoute";
@@ -23,10 +24,11 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    // Everything inside requires a logged-in user
+    // Layout route: the auth guard wraps AppShell (sidebar / bottom bar),
+    // which renders whichever page is active through its own <Outlet />
     element: (
       <ProtectedRoute>
-        <Outlet />
+        <AppShell />
       </ProtectedRoute>
     ),
     children: [
