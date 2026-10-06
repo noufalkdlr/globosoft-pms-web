@@ -4,6 +4,7 @@ import type { AuthUser } from "../features/auth/types/authTypes";
 export const ROUTES = {
   root: "/",
   login: "/login",
+  home: "/home",
   board: "/board",
   calendar: "/calendar",
   clients: "/clients",
@@ -16,7 +17,7 @@ export const ROUTES = {
 } as const;
 
 // Single place that decides where a user lands after login.
-// Admins see the reports dashboard; everyone else lands on the task board.
+// Admins see the reports dashboard; everyone else lands on their Home page.
 export function getHomeRoute(user: Pick<AuthUser, "role">) {
-  return user.role === "admin" ? ROUTES.dashboard : ROUTES.board;
+  return user.role === "admin" ? ROUTES.dashboard : ROUTES.home;
 }

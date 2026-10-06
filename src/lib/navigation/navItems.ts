@@ -1,6 +1,7 @@
 import {
   Briefcase,
   CalendarDays,
+  House,
   LayoutDashboard,
   SquareKanban,
   type LucideIcon,
@@ -25,6 +26,7 @@ export interface NavItem {
 
 // Add a new page to the sidebar / mobile bar by adding one entry here
 export const NAV_ITEMS: NavItem[] = [
+  { label: "Home", href: ROUTES.home, icon: House, roles: ["member"] },
   {
     label: "Content calendar",
     shortLabel: "Calendar",

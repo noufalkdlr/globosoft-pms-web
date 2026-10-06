@@ -7,6 +7,7 @@ import { BoardRoute } from "./routes/BoardRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { ClientsRoute } from "./routes/ClientsRoute";
 import { DashboardRoute } from "./routes/DashboardRoute";
+import { HomeRoute } from "./routes/HomeRoute";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
 import { RequirePermission } from "./routes/RequirePermission";
@@ -35,6 +36,15 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
+      {
+        // Home is the members' landing page; admins have the dashboard instead
+        element: (
+          <RequireRole role="member">
+            <Outlet />
+          </RequireRole>
+        ),
+        children: [{ path: ROUTES.home, element: <HomeRoute /> }],
+      },
       { path: ROUTES.board, element: <BoardRoute /> },
       { path: ROUTES.clients, element: <ClientsRoute /> },
       {
