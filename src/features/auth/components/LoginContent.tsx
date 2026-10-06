@@ -14,8 +14,8 @@ export function LoginContent() {
 
   return (
     <div className="relative grid min-h-dvh place-items-center overflow-hidden p-6">
-      {/* Round blurred red glow behind the card */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-brand/40 blur-[120px]" />
+      {/* Large, soft red glow spreading from the top */}
+      <div className="pointer-events-none absolute -top-64 left-1/2 h-[640px] w-[820px] -translate-x-1/2 rounded-full bg-brand/30 blur-[200px]" />
 
       <GlassCard className="relative w-full max-w-sm">
         <h1 className="text-2xl font-semibold">Welcome back</h1>
