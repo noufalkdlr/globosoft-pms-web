@@ -1,5 +1,5 @@
 import { wait } from "../../../lib/api/dummyHelpers";
-import { createTask, listTasks, updateTask } from "./dummyTasks";
+import { createTask, deleteTask, listTasks, updateTask } from "./dummyTasks";
 
 import type { PaginatedResponse } from "../../../types/paginationTypes";
 import type {
@@ -39,4 +39,11 @@ export async function updateTaskApi(
   await wait(400);
 
   return updateTask(id, payload);
+}
+
+// await api.delete(TASK_ENDPOINTS.detail(id));
+export async function deleteTaskApi(id: number): Promise<void> {
+  await wait(400);
+
+  deleteTask(id);
 }

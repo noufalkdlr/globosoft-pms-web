@@ -287,6 +287,17 @@ changing `assigned_to` needs `can_assign`.
 - `404` unknown or invisible card; `403`, `422` as above.
 - Validate everything first; if anything fails, change nothing.
 
+### `DELETE /tasks/{id}`
+
+Needs `can_create_content`. `204` with no body.
+
+- A card can only be deleted while it is `new` or `todo`. After that `409`
+  `"This card is already in progress, so it can't be deleted."`
+- `404` unknown or invisible card; `403` no permission.
+- The id is never reused, and the month overview drops the card from its counts.
+- Deleting a `todo` card removes it from the assigned designer's list. Notify them once
+  notifications exist.
+
 ### Card validation
 
 - `title`: trimmed, inner spaces collapsed, 1 to 120 characters.
@@ -370,3 +381,5 @@ was never written.
   extra cards give `extra`; a type missing from the plan has `target` 0; archived clients
   appear only for months where they have cards; changing a plan from next month does not
   change this month's overview.
+- Cards: deleting is only possible for `new` and `todo` cards (`409` after that), needs
+  `can_create_content` (`403`), hides invisible cards (`404`), and never reuses an id.

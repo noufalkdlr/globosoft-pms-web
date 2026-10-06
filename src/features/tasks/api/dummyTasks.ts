@@ -93,6 +93,7 @@ function buildSeed(): State {
   const nextMonth = addMonths(month, 1);
   const now = new Date().toISOString();
   const tasks: TaskRow[] = [];
+  const counters = new Map<string, number>();
   let nextId = 1;
 
   function addCards(
@@ -102,6 +103,12 @@ function buildSeed(): State {
     statuses: TaskStatus[],
   ) {
     const typeName = findContentType(contentTypeId)?.name ?? "Post";
+
+    // Continue the numbering of earlier batches for the same client, month and
+    // type, so every title in a client's month is unique
+    const batchKey = `${clientId}-${targetMonth}-${contentTypeId}`;
+    const alreadyAdded = counters.get(batchKey) ?? 0;
+    counters.set(batchKey, alreadyAdded + statuses.length);
 
     statuses.forEach((status, index) => {
       const id = nextId++;
@@ -114,7 +121,7 @@ function buildSeed(): State {
         client_id: clientId,
         content_type_id: contentTypeId,
         month: targetMonth,
-        title: `${TITLE_IDEAS[(id + index) % TITLE_IDEAS.length]} ${typeName.toLowerCase()}`,
+        title: `${TITLE_IDEAS[(id + index) % TITLE_IDEAS.length]} ${typeName.toLowerCase()} ${alreadyAdded + index + 1}`,
         content:
           "Caption and talking points for this piece, written by the content team.",
         status,
@@ -514,6 +521,32 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
   save();
 
   return toTask(row);
+}
+
+// Only cards nobody has started on can be deleted. The id is never reused.
+export function deleteTask(id: number): void {
+  const user = requireUser();
+  const current = load();
+  const index = current.tasks.findIndex((task) => task.id === id);
+  const row = current.tasks[index];
+
+  if (!row || !canSee(user, row)) {
+    throw fakeApiError(404, "Card not found.");
+  }
+
+  if (!can(user, "can_create_content")) {
+    throw fakeApiError(403, "You don't have permission to delete cards.");
+  }
+
+  if (row.status !== "new" && row.status !== "todo") {
+    throw fakeApiError(
+      409,
+      "This card is already in progress, so it can't be deleted.",
+    );
+  }
+
+  current.tasks.splice(index, 1);
+  save();
 }
 
 // ---- month overview ------------------------------------------------------
