@@ -460,6 +460,91 @@ Needs `can_create_content`. `204` with no body.
   are given, the deadline must not be after the posting date.
 - `assigned_to`: an active user whose team has `can_receive_tasks`.
 
+## Notifications
+
+The bell. In-app only: no email, no WhatsApp, and no push yet (push comes with the PWA).
+The app asks for news every 30 seconds, so there is no websocket to build.
+
+### The table (`notifications`)
+
+| column | meaning |
+|---|---|
+| `id` | |
+| `user_id` | who it is for. Everyone sees only their own. |
+| `type` | `assigned`, `unassigned`, `updated`, `deleted`, `submitted`, `approved`, `sent_back` |
+| `task_id` | the card. It becomes `null` when the card is deleted (a foreign key with `ON DELETE SET NULL`), so old lines stay but no longer link anywhere. |
+| `message` | the sentence to show, **written by the backend when it happens** and stored, so the bell never rebuilds one |
+| `is_read` | |
+| `created_at` | |
+
+Index `(user_id, is_read, created_at)`. Write the row **in the same transaction** as the change
+that causes it.
+
+### Who is told what
+
+Nobody is told about something they did themselves (an admin who approves a card does not get
+"approved" about it).
+
+| what happened | who is told | `type` |
+|---|---|---|
+| a card is created with a designer, or a designer is given a card | that designer | `assigned` |
+| the designer is taken off, or replaced | the designer who had it | `unassigned` |
+| the brief of a card that has a designer changes (title, content, type, month, deadline, posting date) and the designer stays | that designer | `updated` |
+| a card that has a designer is deleted | that designer (`task_id` null) | `deleted` |
+| a design is submitted (also a resubmission) | every **active member whose team has `can_review`**. Admins are not included: they have the dashboard, and would hear about every card in the company. | `submitted` |
+| a design is approved | the card's designer | `approved` |
+| a design is sent back | the card's designer, with the start of the comment (120 characters) | `sent_back` |
+
+A change that does nothing (saving a card without changing anything, a refused move) tells nobody.
+Replacing the designer sends two lines: `assigned` to the new one and `unassigned` to the old one.
+Changing the brief and replacing the designer in one request sends `assigned` to the new designer and `unassigned` to the old one, but no `updated`.
+
+The sentences (the first word is the person who did it):
+
+- `assigned`: `Marketing Demo gave you "Festive offer poster 3" (Fresh Bakes)`
+- `unassigned`: `"..." (...) was taken off your list by Marketing Demo`
+- `updated`: `Marketing Demo changed "..." (...)`
+- `deleted`: `Marketing Demo deleted "..." (...)`
+- `submitted`: `Anu Mathew submitted "..." (...) for approval`
+- `approved`: `Marketing Demo approved "..." (...)`
+- `sent_back`: `Marketing Demo sent back "..." (...): Please make the logo bigger…`
+
+### `GET /notifications`
+
+Query: `unread` (true: only unread), `limit` (default 20, max 100), `offset`. `200`:
+
+```json
+{
+  "items": [
+    {
+      "id": 41,
+      "type": "sent_back",
+      "message": "Marketing Demo sent back \"Festive offer poster 3\" (Fresh Bakes): Please make the logo bigger…",
+      "is_read": false,
+      "created_at": "2026-10-06T09:00:00Z",
+      "task": { "id": 7, "month": "2026-10", "client": { "id": 1, "name": "Fresh Bakes" } }
+    }
+  ],
+  "total": 12,
+  "limit": 20,
+  "offset": 0,
+  "unread_count": 3
+}
+```
+
+Newest first. `task` is `null` when the card was deleted. **`unread_count` is always the whole bell,
+whatever the page or the filter**: the bell's number comes from this same request. `total` is the
+count of the (filtered) list. `401` without a session or for a deactivated person.
+
+### `PATCH /notifications/{id}/read`
+
+`200` the notification, now `is_read: true`. Doing it twice is fine. Someone else's line, or one that
+does not exist, is `404` (not `403`: it is none of their business).
+
+### `POST /notifications/read-all`
+
+Marks all of the signed-in person's lines read. `204`.
+
 ## Reports
 
 Admin only (`401` without a session or for a deactivated admin, `403` for a member). The
@@ -657,3 +742,10 @@ was never written.
 - Reports: the monthly numbers agree with counting the cards by hand; archived clients without
   cards that month are left out; an idle active designer still has a row; a deactivated designer
   with cards keeps theirs; a deleted card disappears from every number.
+- Notifications: each trigger tells exactly the people in the table, never the person who did it,
+  never a deactivated person, never an admin about a submission; refused or empty changes tell nobody.
+- Notifications: replacing a designer sends two lines, changing the brief and the designer together
+  sends one, deleting a card with a designer sends a line with `task` null.
+- Notifications: the list is the caller's own, newest first, `unread_count` ignores paging and the
+  `unread` filter, someone else's line is 404 on mark-read, mark-read twice is fine, read-all only
+  touches the caller's own lines.

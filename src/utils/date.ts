@@ -35,15 +35,18 @@ export function getTodayIst(now: Date = new Date()): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
-// "2026-11-20" -> "20 Nov"
-export function formatShortDate(value: string): string {
-  const [year, month, day] = value.split("-").map(Number);
+const MONTH_ABBREVIATIONS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    timeZone: "UTC",
-  });
+// "2026-11-20" -> "20 Nov". The month names come from a fixed list because
+// browsers disagree on some ("Sep" or "Sept"), and a date should read the same
+// on everyone's screen.
+export function formatShortDate(value: string): string {
+  const [, month, day] = value.split("-").map(Number);
+
+  return `${day} ${MONTH_ABBREVIATIONS[month - 1]}`;
 }
 
 // "2026-10-30" + 3 days -> "2026-11-02"

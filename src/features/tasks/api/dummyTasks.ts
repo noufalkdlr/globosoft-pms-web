@@ -12,6 +12,7 @@ import { findContentType } from "../../content-types/api/dummyContentTypes";
 import {
   findAssignableUser,
   findUser,
+  listReviewerIds,
 } from "../../users/api/dummyUsers";
 
 import { STATUS_LABEL } from "../lib/taskStatus";
@@ -24,6 +25,10 @@ import type {
   TypeProgress,
 } from "../../calendar/types/overviewTypes";
 import type { PaginatedResponse } from "../../../types/paginationTypes";
+import type {
+  NotificationRecord,
+  NotificationType,
+} from "../../notifications/types/notificationTypes";
 import type {
   Task,
   TaskCreateRequest,
@@ -86,12 +91,25 @@ interface TaskEventRow {
   created_at: string;
 }
 
+// A line in someone's bell. `task_id` becomes null when the card is deleted.
+interface NotificationRow {
+  id: number;
+  user_id: number;
+  type: NotificationType;
+  task_id: number | null;
+  message: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 interface State {
   tasks: TaskRow[];
   nextId: number;
   nextReviewId: number;
   events: TaskEventRow[];
   nextEventId: number;
+  notifications: NotificationRow[];
+  nextNotificationId: number;
 }
 
 // ---- seed data -----------------------------------------------------------
@@ -121,6 +139,43 @@ function pad(value: number) {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_NOTE_IN_MESSAGE = 120;
+
+// The words of each notification. The backend writes these when the event
+// happens and stores them, so the bell never has to rebuild a sentence.
+function cardLabel(title: string, clientName: string | undefined) {
+  return `"${title}" (${clientName ?? "a client"})`;
+}
+
+function shorten(text: string) {
+  return text.length > MAX_NOTE_IN_MESSAGE
+    ? `${text.slice(0, MAX_NOTE_IN_MESSAGE - 1).trimEnd()}…`
+    : text;
+}
+
+function messageFor(
+  type: NotificationType,
+  actorName: string,
+  card: string,
+  note?: string,
+): string {
+  switch (type) {
+    case "assigned":
+      return `${actorName} gave you ${card}`;
+    case "unassigned":
+      return `${card} was taken off your list by ${actorName}`;
+    case "updated":
+      return `${actorName} changed ${card}`;
+    case "deleted":
+      return `${actorName} deleted ${card}`;
+    case "submitted":
+      return `${actorName} submitted ${card} for approval`;
+    case "approved":
+      return `${actorName} approved ${card}`;
+    case "sent_back":
+      return `${actorName} sent back ${card}${note ? `: ${shorten(note)}` : ""}`;
+  }
+}
 
 // The statuses a card passes through on its way to its current one
 const SEED_PATH: Record<TaskStatus, TaskStatus[]> = {
@@ -154,10 +209,12 @@ function buildSeed(): State {
   const previousMonth = addMonths(month, -1);
   const tasks: TaskRow[] = [];
   const events: TaskEventRow[] = [];
+  const notifications: NotificationRow[] = [];
   const counters = new Map<string, number>();
   let nextId = 1;
   let nextReviewId = 1;
   let nextEventId = 1;
+  let nextNotificationId = 1;
 
   function addCards(
     clientId: number,
@@ -207,6 +264,39 @@ function buildSeed(): State {
         });
       }
 
+      // The bell: the last thing that happened to a recent card, for whoever it
+      // concerned. Older ones are marked read, so the bell looks lived in.
+      const title = `${TITLE_IDEAS[(id + index) % TITLE_IDEAS.length]} ${typeName.toLowerCase()} ${alreadyAdded + index + 1}`;
+      const card = cardLabel(title, findClientRow(clientId)?.name);
+      const hoursAgo = (nowDate.getTime() - finalAt.getTime()) / (60 * 60 * 1000);
+      const concern: { userId: number; type: NotificationType; note?: string } | null =
+        status === "todo"
+          ? { userId: assigneeId, type: "assigned" }
+          : status === "submitted"
+            ? { userId: MARKETING_USER_ID, type: "submitted" }
+            : status === "done"
+              ? { userId: assigneeId, type: "approved" }
+              : status === "fix"
+                ? { userId: assigneeId, type: "sent_back", note: "Please make the logo bigger and fix the offer text." }
+                : null;
+
+      if (concern && hoursAgo <= 72) {
+        const actorName =
+          concern.type === "submitted"
+            ? (findUser(assigneeId)?.name ?? "A designer")
+            : "Marketing Demo";
+
+        notifications.push({
+          id: nextNotificationId++,
+          user_id: concern.userId,
+          type: concern.type,
+          task_id: id,
+          message: messageFor(concern.type, actorName, card, concern.note),
+          is_read: hoursAgo > 30,
+          created_at: finalAt.toISOString(),
+        });
+      }
+
       // The history that led to this status
       const path = SEED_PATH[status];
 
@@ -233,7 +323,7 @@ function buildSeed(): State {
         client_id: clientId,
         content_type_id: contentTypeId,
         month: targetMonth,
-        title: `${TITLE_IDEAS[(id + index) % TITLE_IDEAS.length]} ${typeName.toLowerCase()} ${alreadyAdded + index + 1}`,
+        title,
         content:
           "Caption and talking points for this piece, written by the content team.",
         status,
@@ -280,7 +370,15 @@ function buildSeed(): State {
   addCards(5, 1, month, repeat("done", 6));
   addCards(5, 6, month, ["ongoing"]);
 
-  return { tasks, nextId, nextReviewId, events, nextEventId };
+  return {
+    tasks,
+    nextId,
+    nextReviewId,
+    events,
+    nextEventId,
+    notifications,
+    nextNotificationId,
+  };
 }
 
 let state: State | null = null;
@@ -301,6 +399,8 @@ function load(): State {
       saved.nextReviewId ??= 1;
       saved.events ??= [];
       saved.nextEventId ??= 1;
+      saved.notifications ??= [];
+      saved.nextNotificationId ??= 1;
       saved.tasks.forEach((row) => {
         row.reviews ??= [];
       });
@@ -392,6 +492,38 @@ function recordEvent(
     created_at: at,
   });
   current.nextEventId += 1;
+}
+
+// Puts a line in someone's bell. Nobody is told about what they did themselves.
+function notify(
+  recipientId: number,
+  actor: AuthUser,
+  type: NotificationType,
+  row: TaskRow,
+  note?: string,
+) {
+  if (recipientId === actor.id) {
+    return;
+  }
+
+  const current = load();
+
+  current.notifications.push({
+    id: current.nextNotificationId,
+    user_id: recipientId,
+    type,
+    task_id: row.id,
+    message: messageFor(
+      type,
+      // The saved name, not the copy in the session: renaming someone must show
+      findUser(actor.id)?.name ?? actor.name,
+      cardLabel(row.title, findClientRow(row.client_id)?.name),
+      note,
+    ),
+    is_read: false,
+    created_at: new Date().toISOString(),
+  });
+  current.nextNotificationId += 1;
 }
 
 function toTask(row: TaskRow): Task {
@@ -619,6 +751,7 @@ export function createTask(request: TaskCreateRequest): Task {
 
   if (assigneeId !== null) {
     recordEvent(row, "new", "todo", user.id, now);
+    notify(assigneeId, user, "assigned", row);
   }
 
   save();
@@ -689,6 +822,16 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     validateAssignee(request.assigned_to);
   }
 
+  // Did anything the designer would care about really change?
+  const briefChanged =
+    row.month !== month ||
+    row.content_type_id !== contentTypeId ||
+    row.title !== title ||
+    row.content !== content ||
+    row.posting_date !== postingDate ||
+    row.deadline !== deadline;
+  const designerBefore = row.assigned_to_id;
+
   row.month = month;
   row.content_type_id = contentTypeId;
   row.title = title;
@@ -710,6 +853,20 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
     if (row.status !== statusBefore) {
       recordEvent(row, statusBefore, row.status, user.id, new Date().toISOString());
     }
+  }
+
+  // The new designer is told they have a card, the old one that it is gone. A
+  // designer who keeps the card is told if its brief changed.
+  if (row.assigned_to_id !== designerBefore) {
+    if (row.assigned_to_id !== null) {
+      notify(row.assigned_to_id, user, "assigned", row);
+    }
+
+    if (designerBefore !== null) {
+      notify(designerBefore, user, "unassigned", row);
+    }
+  } else if (briefChanged && row.assigned_to_id !== null) {
+    notify(row.assigned_to_id, user, "updated", row);
   }
 
   row.updated_at = nextTimestamp(row.updated_at);
@@ -858,6 +1015,16 @@ export function changeTaskStatus(
   row.file_link = fileLink;
   recordEvent(row, statusBefore, request.status, user.id, now);
 
+  if (request.status === "submitted") {
+    for (const reviewerId of listReviewerIds()) {
+      notify(reviewerId, user, "submitted", row);
+    }
+  } else if (row.assigned_to_id !== null && request.status === "done") {
+    notify(row.assigned_to_id, user, "approved", row);
+  } else if (row.assigned_to_id !== null && request.status === "fix") {
+    notify(row.assigned_to_id, user, "sent_back", row, review?.comment ?? undefined);
+  }
+
   if (review) {
     review.id = load().nextReviewId;
     load().nextReviewId += 1;
@@ -890,6 +1057,13 @@ export function deleteTask(id: number): void {
       409,
       "This card is already in progress, so it can't be deleted.",
     );
+  }
+
+  // The designer who was holding the card is told it is gone. Once the card is
+  // deleted the line has nothing to link to: the join finds no card, so `task`
+  // is null (in the database, `task_id` becomes null: ON DELETE SET NULL).
+  if (row.assigned_to_id !== null) {
+    notify(row.assigned_to_id, user, "deleted", row);
   }
 
   current.tasks.splice(index, 1);
@@ -1042,4 +1216,66 @@ export function getReportSource(): {
       }),
     ),
   };
+}
+
+// ---- notifications --------------------------------------------------------------
+// The bell reads and writes the same state as the cards: a notification and the
+// card it is about are changed in one go. dummyNotifications.ts adds the
+// session check and the paging on top of these.
+
+function toNotification(row: NotificationRow): NotificationRecord {
+  const task = row.task_id === null ? undefined : load().tasks.find((t) => t.id === row.task_id);
+
+  return {
+    id: row.id,
+    type: row.type,
+    message: row.message,
+    is_read: row.is_read,
+    created_at: row.created_at,
+    task: task
+      ? {
+          id: task.id,
+          month: task.month,
+          client: {
+            id: task.client_id,
+            name: findClientRow(task.client_id)?.name ?? "Client",
+          },
+        }
+      : null,
+  };
+}
+
+// Everything in one person's bell, newest first
+export function listNotificationsFor(userId: number): NotificationRecord[] {
+  return load()
+    .notifications.filter((row) => row.user_id === userId)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id - a.id)
+    .map(toNotification);
+}
+
+// Marks one line read, if it is in this person's bell
+export function markNotificationRead(
+  userId: number,
+  id: number,
+): NotificationRecord | undefined {
+  const row = load().notifications.find((n) => n.id === id && n.user_id === userId);
+
+  if (!row) {
+    return undefined;
+  }
+
+  row.is_read = true;
+  save();
+
+  return toNotification(row);
+}
+
+export function markAllNotificationsRead(userId: number): void {
+  for (const row of load().notifications) {
+    if (row.user_id === userId) {
+      row.is_read = true;
+    }
+  }
+
+  save();
 }

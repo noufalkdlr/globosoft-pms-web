@@ -4,6 +4,8 @@ import { LogOut } from "lucide-react";
 import { cn } from "../../utils/cn";
 import { getNavItems, type NavItem } from "../../lib/navigation/navItems";
 import { useAuthStore } from "../../stores/authStore";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { NotificationBell } from "../../features/notifications/components/NotificationBell";
 import { useLogout } from "../../features/auth/hooks/useLogout";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
@@ -59,6 +61,15 @@ interface NavProps {
   items: NavItem[];
 }
 
+// Placeholder mark: swap for the real company logo
+function LogoMark() {
+  return (
+    <div className="grid size-9 place-items-center rounded-xl bg-brand text-sm font-semibold text-brand-foreground shadow-brand-glow">
+      G
+    </div>
+  );
+}
+
 // Desktop: floating glass sidebar, inset from the screen edges
 function Sidebar({ user, items }: NavProps) {
   const logoutMutation = useLogout();
@@ -67,11 +78,11 @@ function Sidebar({ user, items }: NavProps) {
   return (
     <aside className="glass fixed bottom-4 left-4 top-4 z-30 hidden w-60 flex-col rounded-3xl p-4 md:flex">
       <div className="flex items-center gap-3 px-2 py-1">
-        {/* Placeholder mark: swap for the real company logo */}
-        <div className="grid size-9 place-items-center rounded-xl bg-brand text-sm font-semibold text-brand-foreground shadow-brand-glow">
-          G
-        </div>
+        <LogoMark />
         <span className="font-semibold">Globosoft PMS</span>
+        <div className="ml-auto">
+          <NotificationBell placement="side" />
+        </div>
       </div>
 
       <nav aria-label="Main" className="mt-6 flex flex-col gap-1">
@@ -135,6 +146,9 @@ function MobileBar({ items }: Pick<NavProps, "items">) {
 // active page rendered through <Outlet />
 export function AppShell() {
   const user = useAuthStore((state) => state.user);
+  // One bell on screen at a time: in the sidebar on wide screens, in a slim
+  // bar at the top on narrow ones
+  const isWide = useMediaQuery("(min-width: 768px)");
 
   // ProtectedRoute guarantees a user; this only narrows the type
   if (!user) {
@@ -145,11 +159,21 @@ export function AppShell() {
 
   return (
     <GlowBackground>
-      <Sidebar user={user} items={items} />
+      {isWide && <Sidebar user={user} items={items} />}
       <MobileBar items={items} />
 
       {/* Left padding clears the sidebar (w-60 + left-4 + gap); bottom padding clears the mobile bar */}
       <main className="px-5 pb-28 pt-6 md:pb-8 md:pl-[17.5rem] md:pr-8 md:pt-8">
+        {!isWide && (
+          <div className="mb-5 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <LogoMark />
+              <span className="font-semibold">Globosoft PMS</span>
+            </div>
+            <NotificationBell placement="top" />
+          </div>
+        )}
+
         <Outlet />
       </main>
     </GlowBackground>

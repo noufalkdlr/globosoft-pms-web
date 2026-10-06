@@ -1,4 +1,5 @@
 import type { ClientListParams } from "../../features/clients/types/clientTypes";
+import type { NotificationListParams } from "../../features/notifications/types/notificationTypes";
 import type { ReportParams } from "../../features/reports/types/reportTypes";
 import type { TaskListParams } from "../../features/tasks/types/taskTypes";
 import type { UserListParams } from "../../features/users/types/userTypes";
@@ -30,6 +31,10 @@ export const queryKeys = {
   },
   teams: {
     all: ["teams"] as const,
+  },
+  notifications: {
+    all: ["notifications"] as const,
+    list: (params: NotificationListParams) => ["notifications", "list", params] as const,
   },
   reports: {
     all: ["reports"] as const,

@@ -2,10 +2,10 @@ import { Link } from "react-router";
 
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
-import { ROUTES } from "../../../lib/routes";
 import { formatShortDate } from "../../../utils/date";
 import { formatMonth } from "../../../utils/month";
 import { isLate } from "../../tasks/lib/taskDates";
+import { boardLinkFor } from "../../tasks/lib/taskLinks";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
 import { getDueLabel } from "../lib/homeSections";
 
@@ -29,9 +29,6 @@ export function HomeTaskRow({
 }: HomeTaskRowProps) {
   const due = getDueLabel(task, today);
 
-  // The board for the card's month, filtered to its client. Unfinished work
-  // from earlier months shows on this month's board, so it links there.
-  const month = task.month > currentMonth ? task.month : currentMonth;
   const note =
     showNote && task.status === "fix" && task.latest_review?.decision === "rejected"
       ? task.latest_review
@@ -39,7 +36,7 @@ export function HomeTaskRow({
 
   return (
     <Link
-      to={{ pathname: ROUTES.board, search: `?month=${month}&client=${task.client.id}` }}
+      to={boardLinkFor(task, currentMonth)}
       className="block rounded-2xl px-3 py-2.5 transition hover:bg-white/5"
     >
       <div className="flex items-start justify-between gap-3">

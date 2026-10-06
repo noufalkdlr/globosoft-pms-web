@@ -165,6 +165,19 @@ export function findAssignableUser(id: number): AssignableUser | undefined {
   return row ? (toAssignable(row) ?? undefined) : undefined;
 }
 
+// The people told when a design is submitted: active members whose team can
+// review. Admins are not included: they have the dashboard, and would be
+// pinged about every card in the company.
+export function listReviewerIds(): number[] {
+  return load()
+    .users.filter((user) => {
+      const team = user.team_id === null ? undefined : findTeam(user.team_id);
+
+      return user.is_active && user.role === "member" && team?.can_review === true;
+    })
+    .map((user) => user.id);
+}
+
 // Every active Design member, without a permission check: the reports list them
 // all so that someone with nothing on their plate shows up too
 export function listActiveDesigners(): AssignableUser[] {
