@@ -58,15 +58,26 @@ export function NotificationPanel({
       }
     }
 
+    // The position was worked out for this window width: close rather than
+    // drift. Only a change of width counts: a phone's address bar showing or
+    // hiding changes the height and must not close the list.
+    let width = window.innerWidth;
+
+    function handleResize() {
+      if (window.innerWidth !== width) {
+        width = window.innerWidth;
+        onClose();
+      }
+    }
+
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("mousedown", handleMouseDown);
-    // The position was worked out for this window size: close rather than drift
-    window.addEventListener("resize", onClose);
+    window.addEventListener("resize", handleResize);
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("resize", onClose);
+      window.removeEventListener("resize", handleResize);
     };
   }, [anchor, onClose]);
 

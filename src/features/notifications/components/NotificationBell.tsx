@@ -3,16 +3,12 @@ import { Bell } from "lucide-react";
 
 import { useNotifications } from "../hooks/useNotifications";
 import { useNotificationToasts } from "../hooks/useNotificationToasts";
-import { getPanelPosition, type BellPlacement } from "../lib/panelPosition";
+import { getPanelPosition } from "../lib/panelPosition";
 import { NotificationPanel } from "./NotificationPanel";
-
-interface NotificationBellProps {
-  placement: BellPlacement;
-}
 
 // The bell with the number of unread notifications. It asks for news every
 // half minute, and announces anything that arrives while the app is open.
-export function NotificationBell({ placement }: NotificationBellProps) {
+export function NotificationBell() {
   // null while closed, otherwise where the open panel goes
   const [panelPosition, setPanelPosition] = useState<CSSProperties | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -27,7 +23,7 @@ export function NotificationBell({ placement }: NotificationBellProps) {
   function handleClick() {
     const rect = buttonRef.current?.getBoundingClientRect();
 
-    setPanelPosition(isOpen || !rect ? null : getPanelPosition(rect, placement));
+    setPanelPosition(isOpen || !rect ? null : getPanelPosition(rect));
   }
 
   return (

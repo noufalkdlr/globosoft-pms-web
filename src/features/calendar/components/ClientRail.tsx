@@ -41,7 +41,7 @@ export function ClientRail({
   );
 
   return (
-    <nav aria-label="Clients" className="space-y-3 lg:sticky lg:top-8 lg:self-start">
+    <nav aria-label="Clients" className="space-y-3 lg:sticky lg:top-20 lg:self-start">
       <SearchInput
         label="Search clients"
         placeholder="Search clients"
