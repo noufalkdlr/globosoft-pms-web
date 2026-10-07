@@ -724,7 +724,13 @@ function validateMonth(month: string) {
   }
 }
 
-function validateDates(postingDate: string | null, deadline: string | null) {
+// `deadlineIsNew`: the deadline is being set or changed now. Only then may it
+// not be in the past; a card keeps a deadline that has since passed.
+function validateDates(
+  postingDate: string | null,
+  deadline: string | null,
+  deadlineIsNew: boolean,
+) {
   for (const value of [postingDate, deadline]) {
     if (value !== null && !isValidIsoDate(value)) {
       throw fakeApiError(422, "Enter dates as YYYY-MM-DD.");
@@ -734,6 +740,10 @@ function validateDates(postingDate: string | null, deadline: string | null) {
   // ISO dates compare correctly as plain strings
   if (postingDate !== null && deadline !== null && deadline > postingDate) {
     throw fakeApiError(422, "The deadline can't be after the posting date.");
+  }
+
+  if (deadlineIsNew && deadline !== null && deadline < getTodayIst()) {
+    throw fakeApiError(422, "The deadline can't be in the past.");
   }
 }
 
@@ -843,7 +853,7 @@ export function createTask(request: TaskCreateRequest): Task {
   const postingDate = request.posting_date ?? null;
   const deadline = request.deadline ?? null;
 
-  validateDates(postingDate, deadline);
+  validateDates(postingDate, deadline, true);
   validateContentType(client.id, request.month, request.content_type_id);
 
   // No title given: the card is named after its content type
@@ -961,7 +971,11 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
         ? autoTitle(row.client_id, month, newTypeName, row.id)
         : row.title;
 
-  validateDates(postingDate, deadline);
+  validateDates(
+    postingDate,
+    deadline,
+    request.deadline !== undefined && request.deadline !== row.deadline,
+  );
 
   if (request.month !== undefined || request.content_type_id !== undefined) {
     validateContentType(row.client_id, month, contentTypeId);

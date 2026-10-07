@@ -478,7 +478,10 @@ Needs `can_create_content`. `204` with no body.
 - `content_type_id`: an active type that is in the client's plan **for that month**.
   The dropdown only offers those, and this keeps the data consistent.
 - `posting_date`, `deadline`: real calendar dates (`2026-02-30` is invalid). If both
-  are given, the deadline must not be after the posting date.
+  are given, the deadline must not be after the posting date. A deadline that is **set or
+  changed** may not be in the past (compared with today in IST): `422`
+  `"The deadline can't be in the past."` A card that already has a deadline which has since
+  passed keeps it, and edits that do not touch the deadline are not refused because of it.
 - `assigned_to`: an active user whose team has `can_receive_tasks`.
 
 **Renaming.** When `content_type_id` or `month` changes in a `PATCH` without a `title`, a card
@@ -729,7 +732,9 @@ was never written.
 - Cards: a user without `can_create_content` gets `403` on create and edit; assigning needs
   `can_assign` on top; a card cannot be edited once it is `ongoing` or later (`409`).
 - Cards: the type must be in the client's plan for the month; past months, impossible dates
-  and a deadline after the posting date give `422`; nothing is saved when validation fails.
+  a deadline after the posting date, and a new or changed deadline in the past give `422`
+  (an old, already-passed deadline can stay while other fields are edited); nothing is saved
+  when validation fails.
 - Cards: assigning or unassigning never changes `status`; a new card is `todo` with `assigned_to` null; a card with no designer cannot be moved to `ongoing` (`409`), not even by an admin.
 - Cards: a Design member only lists cards assigned to them (or written by them); another
   member's card is `404`, not `403`.

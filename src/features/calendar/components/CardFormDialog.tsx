@@ -8,6 +8,7 @@ import { Select } from "../../../components/ui/Select";
 import { Textarea } from "../../../components/ui/Textarea";
 import { useCan } from "../../../hooks/useCan";
 import { getErrorMessage } from "../../../lib/api/errors";
+import { getTodayIst } from "../../../utils/date";
 import { formatMonth } from "../../../utils/month";
 import { useCreateTask } from "../../tasks/hooks/useCreateTask";
 import { useUpdateTask } from "../../tasks/hooks/useUpdateTask";
@@ -190,10 +191,15 @@ export function CardFormDialog({
         ? `Use ${MAX_NOTES_LENGTH} characters or fewer.`
         : undefined;
     const nextTypeError = typeId ? undefined : "Choose a content type.";
+    // A deadline already in the past is only refused when it is new or was
+    // changed: an old card keeps the deadline it has
+    const deadlineIsNew = !isEdit || deadline !== initial.deadline;
     const nextDeadlineError =
-      deadline && postingDate && deadline > postingDate
-        ? "The deadline can't be after the posting date."
-        : undefined;
+      deadline && deadlineIsNew && deadline < getTodayIst()
+        ? "The deadline can't be in the past."
+        : deadline && postingDate && deadline > postingDate
+          ? "The deadline can't be after the posting date."
+          : undefined;
 
     setContentError(nextContentError);
     setNotesError(nextNotesError);
@@ -422,6 +428,8 @@ export function CardFormDialog({
             <Input
               label="Deadline (optional)"
               type="date"
+              // The date picker greys out the past when adding a card
+              min={isEdit ? undefined : getTodayIst()}
               value={deadline}
               error={deadlineError}
               disabled={isSaving}

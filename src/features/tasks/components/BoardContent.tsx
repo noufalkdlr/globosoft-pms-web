@@ -4,6 +4,7 @@ import { DragDropContext, type DragStart, type DropResult } from "@hello-pangea/
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
+import { SearchInput } from "../../../components/ui/SearchInput";
 import { Select } from "../../../components/ui/Select";
 import { useCan } from "../../../hooks/useCan";
 import { getErrorMessage } from "../../../lib/api/errors";
@@ -20,6 +21,7 @@ import {
   getMoveBlockReason,
   getMoveRule,
 } from "../lib/taskRules";
+import { filterBoardTasks, getDesignerOptions } from "../lib/boardFilters";
 import { BOARD_COLUMNS } from "../lib/taskStatus";
 import { AssignDialog } from "./AssignDialog";
 import { BoardColumn, type DropState } from "./BoardColumn";
@@ -31,6 +33,8 @@ import { TaskDetailsDialog } from "./TaskDetailsDialog";
 import type { Task, TaskStatus } from "../types/taskTypes";
 
 const ALL_CLIENTS = "all";
+const ALL_DESIGNERS = "all";
+const WITHOUT_DESIGNER = "unassigned";
 
 // Which dialog is open, and for which card. At most one at a time.
 type ActiveDialog =
@@ -82,7 +86,10 @@ function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
 }
 
 export function BoardContent() {
-  const { month, clientId, setMonth, setClientId } = useBoardParams();
+  const { month, clientId, designer, setMonth, setClientId, setDesigner, clearFilters } =
+    useBoardParams();
+  // Searching is quick and temporary, so it stays out of the URL
+  const [search, setSearch] = useState("");
 
   // Managers see every card, everyone else only their own (the backend decides)
   // Both hooks run every time (never `a || useB()`, which skips a hook)
@@ -103,7 +110,16 @@ export function BoardContent() {
   // The card being dragged, so every column can say whether it accepts it
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
 
-  const tasks = cardsQuery.data?.items ?? [];
+  // Everything the month returned, and the part of it that passes the filters
+  const allTasks = cardsQuery.data?.items ?? [];
+  const tasks = filterBoardTasks(allTasks, { designer, search });
+  // The client filter is applied by the server, so the line "Showing 3 of 12"
+  // only matters for the two filters applied here
+  const hasLocalFilters = designer !== null || search.trim() !== "";
+  const designerOptions = getDesignerOptions(allTasks);
+  const isDesignerListed =
+    typeof designer !== "number" ||
+    designerOptions.people.some((person) => person.id === designer);
   const groups = groupByStatus(tasks);
   const today = getTodayIst();
 
@@ -119,8 +135,9 @@ export function BoardContent() {
           : undefined))
       : undefined;
 
+  // Looked up among every card, so the details stay open if a filter would hide it
   const detailsTask =
-    detailsId === null ? undefined : tasks.find((task) => task.id === detailsId);
+    detailsId === null ? undefined : allTasks.find((task) => task.id === detailsId);
 
   const getMoves = (task: Task) => getAllowedMoves(user, task);
   const allowedMoves = draggedTask ? getMoves(draggedTask) : [];
@@ -200,6 +217,22 @@ export function BoardContent() {
       );
     }
 
+    if (allTasks.length > 0 && tasks.length === 0) {
+      return (
+        <MessageCard
+          title="No cards match"
+          description="Try a different search, or clear the filters."
+          action={{
+            label: "Clear filters",
+            onClick: () => {
+              clearFilters();
+              setSearch("");
+            },
+          }}
+        />
+      );
+    }
+
     if (tasks.length === 0) {
       return (
         <MessageCard
@@ -245,9 +278,9 @@ export function BoardContent() {
           </div>
         </DragDropContext>
 
-        {cardsQuery.data && cardsQuery.data.total > tasks.length && (
+        {cardsQuery.data && cardsQuery.data.total > allTasks.length && (
           <p className="mt-2 text-sm text-muted-foreground">
-            Showing the first {tasks.length} of {cardsQuery.data.total} cards.
+            Showing the first {allTasks.length} of {cardsQuery.data.total} cards.
             Pick a client to narrow the board.
           </p>
         )}
@@ -274,29 +307,99 @@ export function BoardContent() {
         />
       </header>
 
-      <div className="mt-6 max-w-xs">
-        <Select
-          label="Client"
-          value={clientId === null ? ALL_CLIENTS : String(clientId)}
-          onChange={(event) =>
-            setClientId(
-              event.target.value === ALL_CLIENTS
-                ? null
-                : Number(event.target.value),
-            )
-          }
-        >
-          <option value={ALL_CLIENTS}>All clients</option>
-          {unlistedClient && (
-            <option value={unlistedClient.id}>{unlistedClient.name}</option>
-          )}
-          {clients.map((client) => (
-            <option key={client.id} value={client.id}>
-              {client.name}
-            </option>
-          ))}
-        </Select>
+      <div className="mt-6 flex flex-wrap items-end gap-3">
+        <div className="w-full sm:w-56">
+          <Select
+            label="Client"
+            value={clientId === null ? ALL_CLIENTS : String(clientId)}
+            onChange={(event) =>
+              setClientId(
+                event.target.value === ALL_CLIENTS
+                  ? null
+                  : Number(event.target.value),
+              )
+            }
+          >
+            <option value={ALL_CLIENTS}>All clients</option>
+            {unlistedClient && (
+              <option value={unlistedClient.id}>{unlistedClient.name}</option>
+            )}
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        {/* Everyone else only has their own cards, so there is nothing to pick */}
+        {seesEverything && (
+          <div className="w-full sm:w-56">
+            <Select
+              label="Designer"
+              value={
+                designer === null
+                  ? ALL_DESIGNERS
+                  : designer === WITHOUT_DESIGNER
+                    ? WITHOUT_DESIGNER
+                    : String(designer)
+              }
+              onChange={(event) => {
+                const value = event.target.value;
+
+                setDesigner(
+                  value === ALL_DESIGNERS
+                    ? null
+                    : value === WITHOUT_DESIGNER
+                      ? WITHOUT_DESIGNER
+                      : Number(value),
+                );
+              }}
+            >
+              <option value={ALL_DESIGNERS}>All designers</option>
+              {(designerOptions.unassigned > 0 || designer === WITHOUT_DESIGNER) && (
+                <option value={WITHOUT_DESIGNER}>
+                  Without a designer ({designerOptions.unassigned})
+                </option>
+              )}
+              {/* A designer in the URL who has no card here: still shown, so the
+                  dropdown never points at nothing */}
+              {!isDesignerListed && typeof designer === "number" && (
+                <option value={designer}>Selected designer (0)</option>
+              )}
+              {designerOptions.people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.name} ({person.count})
+                </option>
+              ))}
+            </Select>
+          </div>
+        )}
+
+        <SearchInput
+          className="w-full sm:w-72"
+          label="Search cards"
+          placeholder="Search cards"
+          value={search}
+          onChange={setSearch}
+        />
       </div>
+
+      {hasLocalFilters && cardsQuery.isSuccess && allTasks.length > 0 && (
+        <p aria-live="polite" className="mt-3 text-sm text-muted-foreground">
+          Showing {tasks.length} of {allTasks.length} cards.{" "}
+          <button
+            type="button"
+            onClick={() => {
+              clearFilters();
+              setSearch("");
+            }}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            Clear filters
+          </button>
+        </p>
+      )}
 
       <div className="mt-6">{renderBoard()}</div>
 

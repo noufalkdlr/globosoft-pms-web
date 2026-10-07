@@ -14,18 +14,17 @@ type ToastState = {
   dismiss: (id: number) => void;
 };
 
-const AUTO_DISMISS_MS = 4000;
-
 let nextId = 1;
 
-export const useToastStore = create<ToastState>((set, get) => ({
+// How long a toast stays is decided in ToastHost, where it can also wait while
+// the person is reading it.
+export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
 
   show: (message, variant = "info") => {
     const id = nextId++;
 
     set((state) => ({ toasts: [...state.toasts, { id, message, variant }] }));
-    setTimeout(() => get().dismiss(id), AUTO_DISMISS_MS);
   },
 
   dismiss: (id) => {
