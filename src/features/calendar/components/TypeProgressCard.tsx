@@ -17,7 +17,7 @@ export function TypeProgressCard({ progress }: TypeProgressCardProps) {
   const state = getProgressState(progress.written, progress.target);
 
   return (
-    <GlassCard className="space-y-3 p-4">
+    <GlassCard className="h-full space-y-3 p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="font-medium">{name}</h3>
         {progress.extra > 0 && (

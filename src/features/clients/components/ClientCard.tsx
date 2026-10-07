@@ -29,7 +29,7 @@ export function ClientCard({
   onRestore,
 }: ClientCardProps) {
   return (
-    <GlassCard className="flex items-start gap-4 p-5">
+    <GlassCard className="flex h-full items-start gap-4 p-5">
       <Avatar name={client.name} />
 
       <div className="min-w-0 flex-1">

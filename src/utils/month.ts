@@ -61,6 +61,16 @@ export function getDefaultCalendarMonth(now: Date = new Date()): string {
     : current;
 }
 
+// "2026-09" -> "Sep"
+export function formatMonthShort(month: string): string {
+  const [year, monthNumber] = month.split("-").map(Number);
+
+  return new Date(Date.UTC(year, monthNumber - 1, 1)).toLocaleDateString(
+    "en-US",
+    { month: "short", timeZone: "UTC" },
+  );
+}
+
 // "2026-11" -> "November 2026"
 export function formatMonth(month: string): string {
   const [year, monthNumber] = month.split("-").map(Number);

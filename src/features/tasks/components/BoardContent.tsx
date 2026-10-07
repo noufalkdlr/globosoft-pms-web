@@ -7,6 +7,7 @@ import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
 import { SearchInput } from "../../../components/ui/SearchInput";
 import { Select } from "../../../components/ui/Select";
 import { useCan } from "../../../hooks/useCan";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { getErrorMessage } from "../../../lib/api/errors";
 import { toast } from "../../../stores/toastStore";
 import { useAuthStore } from "../../../stores/authStore";
@@ -90,6 +91,11 @@ export function BoardContent() {
     useBoardParams();
   // Searching is quick and temporary, so it stays out of the URL
   const [search, setSearch] = useState("");
+  // "Done" is folded into a strip unless the screen is wide enough to show all
+  // five columns; a person's own choice (null = no choice yet) wins
+  const isRoomy = useMediaQuery("(min-width: 1700px)");
+  const [doneChoice, setDoneChoice] = useState<boolean | null>(null);
+  const isDoneCollapsed = doneChoice ?? !isRoomy;
 
   // Managers see every card, everyone else only their own (the backend decides)
   // Both hooks run every time (never `a || useB()`, which skips a hook)
@@ -273,6 +279,12 @@ export function BoardContent() {
                     : undefined
                 }
                 onOpen={(task) => setDetailsId(task.id)}
+                collapsed={status === "done" ? isDoneCollapsed : undefined}
+                onToggleCollapsed={
+                  status === "done"
+                    ? () => setDoneChoice(!isDoneCollapsed)
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -307,10 +319,11 @@ export function BoardContent() {
         />
       </header>
 
-      <div className="mt-6 flex flex-wrap items-end gap-3">
-        <div className="w-full sm:w-56">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="w-full sm:w-48">
           <Select
-            label="Client"
+            aria-label="Client"
+            className="h-10"
             value={clientId === null ? ALL_CLIENTS : String(clientId)}
             onChange={(event) =>
               setClientId(
@@ -334,9 +347,10 @@ export function BoardContent() {
 
         {/* Everyone else only has their own cards, so there is nothing to pick */}
         {seesEverything && (
-          <div className="w-full sm:w-56">
+          <div className="w-full sm:w-48">
             <Select
-              label="Designer"
+              aria-label="Designer"
+              className="h-10"
               value={
                 designer === null
                   ? ALL_DESIGNERS
@@ -377,7 +391,8 @@ export function BoardContent() {
         )}
 
         <SearchInput
-          className="w-full sm:w-72"
+          compact
+          className="w-full sm:w-64"
           label="Search cards"
           placeholder="Search cards"
           value={search}
@@ -401,7 +416,7 @@ export function BoardContent() {
         </p>
       )}
 
-      <div className="mt-6">{renderBoard()}</div>
+      <div className="mt-4">{renderBoard()}</div>
 
       {detailsTask && (
         <TaskDetailsDialog task={detailsTask} onClose={() => setDetailsId(null)} />

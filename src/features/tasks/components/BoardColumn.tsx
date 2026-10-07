@@ -1,5 +1,6 @@
 import { useId } from "react";
 import { Draggable, Droppable } from "@hello-pangea/dnd";
+import { ChevronsLeft, ChevronsRight, UserX } from "lucide-react";
 
 import { Badge } from "../../../components/ui/Badge";
 import { cn } from "../../../utils/cn";
@@ -41,6 +42,11 @@ interface BoardColumnProps {
   onAssign?: (task: Task) => void;
   // Opens a card's details
   onOpen: (task: Task) => void;
+  // Only for the "Done" column, which can be folded into a narrow strip so the
+  // columns that need attention have the room. A card can still be dropped on
+  // the strip (approving it).
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 // One stage of the board with the cards that are in it
@@ -55,20 +61,80 @@ export function BoardColumn({
   onMove,
   onAssign,
   onOpen,
+  collapsed = false,
+  onToggleCollapsed,
 }: BoardColumnProps) {
   const headingId = useId();
   // Cards in "To do" that still need a designer are said out loud in the heading
   const withoutDesigner =
     status === "todo" ? tasks.filter((task) => !task.assigned_to).length : 0;
 
+  if (collapsed) {
+    return (
+      <section
+        aria-labelledby={headingId}
+        data-drop-state={dropState}
+        className="w-14 shrink-0 snap-start rounded-3xl p-1.5"
+      >
+        <Droppable droppableId={status}>
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={cn(
+                "flex min-h-40 flex-col rounded-2xl border border-border bg-white/[0.03] transition",
+                dropState === "allowed" && "border-brand/40 bg-brand/5",
+                dropState === "allowed" &&
+                  snapshot.isDraggingOver &&
+                  "border-brand bg-brand/10 ring-1 ring-brand",
+                dropState === "blocked" && "opacity-50",
+              )}
+            >
+              <button
+                type="button"
+                aria-expanded="false"
+                aria-label={`Show ${STATUS_LABEL[status]} cards (${tasks.length})`}
+                title={`Show ${STATUS_LABEL[status]} cards`}
+                onClick={onToggleCollapsed}
+                className="flex flex-1 flex-col items-center gap-3 rounded-2xl px-1 py-4 text-sm text-muted-foreground transition hover:bg-white/5 hover:text-foreground"
+              >
+                <ChevronsLeft className="size-4" aria-hidden="true" />
+                <Badge>{tasks.length}</Badge>
+                <span
+                  id={headingId}
+                  className="flex items-center gap-2 font-medium [writing-mode:vertical-rl]"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={cn("size-2 rounded-full", DOT_CLASS[status])}
+                  />
+                  {STATUS_LABEL[status]}
+                </span>
+              </button>
+
+              {/* Required by the drag and drop library; nothing to show */}
+              <div className="hidden">{provided.placeholder}</div>
+            </div>
+          )}
+        </Droppable>
+      </section>
+    );
+  }
+
   return (
     <section
       aria-labelledby={headingId}
       data-drop-state={dropState}
-      className="w-[85vw] max-w-72 shrink-0 snap-start rounded-3xl p-3 sm:w-72"
+      // Narrow screens scroll sideways through fixed-width columns. From "sm"
+      // up the columns share the row, never narrower than 13rem (the board
+      // scrolls instead) and never wider than 22rem.
+      className="@container w-[85vw] max-w-72 shrink-0 snap-start rounded-3xl p-2 sm:w-auto sm:min-w-52 sm:max-w-[22rem] sm:flex-1 sm:basis-0"
     >
       <header className="flex items-center justify-between gap-2 px-1.5 pb-3 pt-1">
-        <h2 id={headingId} className="flex items-center gap-2 text-sm font-medium">
+        <h2
+          id={headingId}
+          className="flex items-center gap-2 whitespace-nowrap text-sm font-medium"
+        >
           <span
             aria-hidden="true"
             className={cn("size-2 rounded-full", DOT_CLASS[status])}
@@ -77,9 +143,33 @@ export function BoardColumn({
         </h2>
         <span className="flex items-center gap-1.5">
           {withoutDesigner > 0 && (
-            <Badge variant="danger">{withoutDesigner} without a designer</Badge>
+            <Badge
+              variant="danger"
+              className="gap-1 whitespace-nowrap"
+              title={`${withoutDesigner} without a designer`}
+              aria-label={`${withoutDesigner} without a designer`}
+            >
+              <UserX className="size-3" aria-hidden="true" />
+              {withoutDesigner}
+              {/* The word only when the column is wide enough for it */}
+              <span aria-hidden="true" className="hidden @min-[14rem]:inline">
+                unassigned
+              </span>
+            </Badge>
           )}
           <Badge aria-label={`${tasks.length} cards`}>{tasks.length}</Badge>
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              aria-expanded="true"
+              aria-label={`Hide ${STATUS_LABEL[status]} cards`}
+              title={`Hide ${STATUS_LABEL[status]} cards`}
+              onClick={onToggleCollapsed}
+              className="grid size-6 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+            >
+              <ChevronsRight className="size-4" aria-hidden="true" />
+            </button>
+          )}
         </span>
       </header>
 

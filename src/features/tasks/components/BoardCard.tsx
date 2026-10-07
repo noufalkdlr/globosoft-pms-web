@@ -14,7 +14,7 @@ import { GlassCard } from "../../../components/ui/GlassCard";
 import { cn } from "../../../utils/cn";
 import { isFromInteractiveElement } from "../../../utils/clipboard";
 import { formatShortDate } from "../../../utils/date";
-import { formatMonth } from "../../../utils/month";
+import { formatMonth, formatMonthShort } from "../../../utils/month";
 import { isLate, isOverdue, isSafeLink } from "../lib/taskDates";
 
 import type { Task } from "../types/taskTypes";
@@ -75,7 +75,7 @@ export function BoardCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-1">
-          {dragHandleProps && (
+          {dragHandleProps ? (
             // Dragging starts here, not on the whole card, so the links and
             // buttons inside the card stay ordinary controls
             <div
@@ -85,17 +85,15 @@ export function BoardCard({
             >
               <GripVertical className="size-4" aria-hidden="true" />
             </div>
+          ) : (
+            // A card this person cannot move keeps the handle's space, so the
+            // client names line up down the whole column
+            <span aria-hidden="true" className="-ml-1.5 size-7 shrink-0" />
           )}
           <p className="truncate text-xs text-muted-foreground">
             {task.client.name}
           </p>
         </div>
-
-        {late && (
-          <Badge variant="danger" className="shrink-0">
-            Late from {formatMonth(task.month)}
-          </Badge>
-        )}
       </div>
 
       <h3 className="text-sm font-medium">
@@ -124,6 +122,15 @@ export function BoardCard({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <Badge>{task.content_type.name}</Badge>
 
+        {late && (
+          <Badge
+            variant="danger"
+            title={`Late from ${formatMonth(task.month)}`}
+          >
+            Late · {formatMonthShort(task.month)}
+          </Badge>
+        )}
+
         {task.deadline && (
           <span
             className={
@@ -138,9 +145,17 @@ export function BoardCard({
 
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         {task.assigned_to ? (
-          <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="flex min-w-0 items-center gap-2"
+            title={task.assigned_to.name}
+          >
             <Avatar name={task.assigned_to.name} size="sm" />
-            <span className="truncate">{task.assigned_to.name}</span>
+            {/* In a narrow column the name has no width, so only the avatar shows
+                (screen readers still read it, and it appears on hover): a name
+                squeezed to one letter helps nobody */}
+            <span className="w-0 truncate @min-[14rem]:w-auto">
+              {task.assigned_to.name}
+            </span>
           </span>
         ) : onAssign ? (
           // The card cannot start until it has a designer, so the way to give
@@ -149,7 +164,7 @@ export function BoardCard({
             type="button"
             disabled={busy}
             onClick={() => onAssign(task)}
-            className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <UserPlus className="size-3.5" aria-hidden="true" />
             Assign designer

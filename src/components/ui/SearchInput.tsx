@@ -9,6 +9,8 @@ interface SearchInputProps {
   // Describes the field for screen readers, e.g. "Search clients"
   label: string;
   className?: string;
+  // 40px tall instead of 48px, for a row of filters
+  compact?: boolean;
 }
 
 export function SearchInput({
@@ -17,6 +19,7 @@ export function SearchInput({
   placeholder = "Search",
   label,
   className,
+  compact = false,
 }: SearchInputProps) {
   return (
     <div className={cn("relative", className)}>
@@ -32,7 +35,8 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={cn(
-          "h-12 w-full rounded-xl border border-border bg-white/5 pl-11 pr-11 text-foreground outline-none transition",
+          "w-full rounded-xl border border-border bg-white/5 pl-11 pr-11 text-foreground outline-none transition",
+          compact ? "h-10" : "h-12",
           "placeholder:text-muted-foreground/60 focus:border-brand/60 focus:ring-4 focus:ring-brand/20",
           // Hide the browser's own clear button, ours is styled to match
           "[&::-webkit-search-cancel-button]:hidden",

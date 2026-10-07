@@ -79,7 +79,11 @@ function Sidebar({ user, items }: NavProps) {
     <aside className="glass fixed bottom-4 left-4 top-4 z-30 hidden w-60 flex-col rounded-3xl p-4 md:flex">
       <div className="flex items-center gap-3 px-2 py-1">
         <LogoMark />
-        <span className="font-semibold">Globosoft PMS</span>
+        {/* Two lines on purpose: the name, and under it what the app is */}
+        <div className="min-w-0 leading-tight">
+          <p className="font-semibold">Globosoft</p>
+          <p className="text-xs text-muted-foreground">PMS</p>
+        </div>
         <div className="ml-auto">
           <NotificationBell placement="side" />
         </div>

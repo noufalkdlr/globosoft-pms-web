@@ -75,7 +75,8 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
       description={`${task.client.name}, ${formatMonth(task.month)}`}
       className="max-w-xl"
       footer={
-        <Button variant="ghost" onClick={onClose}>
+        // Focus starts here, not on the first link in the card
+        <Button variant="ghost" data-autofocus onClick={onClose}>
           Close
         </Button>
       }

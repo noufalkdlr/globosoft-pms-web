@@ -146,7 +146,7 @@ export function NotificationPanel({
       aria-label="Notifications"
       tabIndex={-1}
       style={position}
-      className="glass fixed z-40 flex max-h-[min(32rem,calc(100dvh-2rem))] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-3xl outline-none"
+      className="glass-popover fixed z-40 flex max-h-[min(32rem,calc(100dvh-2rem))] w-[min(24rem,calc(100vw-2rem))] flex-col rounded-3xl outline-none"
     >
       <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
         <h2 className="text-sm font-semibold">Notifications</h2>
