@@ -1,7 +1,13 @@
 import { demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
+import { can } from "../../../lib/permissions";
+import { readSession } from "../../auth/api/dummySession";
 
-import type { ContentType } from "../types/contentTypeTypes";
+import type { AuthUser } from "../../auth/types/authTypes";
+import type {
+  ContentType,
+  ContentTypeUpdateRequest,
+} from "../types/contentTypeTypes";
 
 // TEMPORARY: stands in for the content_types table of the FastAPI backend.
 // Delete this file once the real API is connected.
@@ -61,8 +67,26 @@ function normalizeName(name: string) {
   return name.trim().replace(/\s+/g, " ");
 }
 
+function requireUser(): AuthUser {
+  const user = readSession();
+
+  if (!user) {
+    throw fakeApiError(401, "Not authenticated");
+  }
+
+  return user;
+}
+
+// The list as the app's other dummy files read it, without a session check
 export function listContentTypes(): ContentType[] {
   return load().types.map((type) => ({ ...type }));
+}
+
+// GET /content-types: any signed-in user
+export function listContentTypesForUser(): ContentType[] {
+  requireUser();
+
+  return listContentTypes();
 }
 
 export function findContentType(id: number): ContentType | undefined {
@@ -71,8 +95,10 @@ export function findContentType(id: number): ContentType | undefined {
   return type ? { ...type } : undefined;
 }
 
-export function createContentType(name: string): ContentType {
-  const current = load();
+// A name ready to store: tidied, not empty, not too long, and not taken by
+// another type ("Poster" and "poster" must never both exist, or reports would
+// split in two). `ignoreId` lets a type keep, or re-case, its own name.
+function validateName(name: string, ignoreId?: number) {
   const normalized = normalizeName(name);
 
   if (!normalized) {
@@ -86,14 +112,28 @@ export function createContentType(name: string): ContentType {
     );
   }
 
-  // "Poster" and "poster" must never both exist, or reports would split in two
-  const exists = current.types.some(
-    (type) => type.name.toLowerCase() === normalized.toLowerCase(),
+  const exists = load().types.some(
+    (type) =>
+      type.id !== ignoreId &&
+      type.name.toLowerCase() === normalized.toLowerCase(),
   );
 
   if (exists) {
     throw fakeApiError(409, "That content type already exists.");
   }
+
+  return normalized;
+}
+
+export function createContentType(name: string): ContentType {
+  const user = requireUser();
+
+  if (!can(user, "can_manage_clients")) {
+    throw fakeApiError(403, "You don't have permission to add content types.");
+  }
+
+  const current = load();
+  const normalized = validateName(name);
 
   const created: ContentType = {
     id: current.nextId,
@@ -106,4 +146,37 @@ export function createContentType(name: string): ContentType {
   save();
 
   return { ...created };
+}
+
+// PATCH /content-types/{id}: rename a type, or turn it off and on. Admins only.
+// Types are never deleted: old cards and plans keep pointing at them.
+export function updateContentType(
+  id: number,
+  request: ContentTypeUpdateRequest,
+): ContentType {
+  const user = requireUser();
+
+  if (user.role !== "admin") {
+    throw fakeApiError(403, "Only admins can change content types.");
+  }
+
+  const type = load().types.find((item) => item.id === id);
+
+  if (!type) {
+    throw fakeApiError(404, "Content type not found.");
+  }
+
+  // Validate everything before changing anything
+  const name =
+    request.name !== undefined ? validateName(request.name, id) : type.name;
+
+  if (request.is_active !== undefined && typeof request.is_active !== "boolean") {
+    throw fakeApiError(422, "is_active must be true or false.");
+  }
+
+  type.name = name;
+  type.is_active = request.is_active ?? type.is_active;
+  save();
+
+  return { ...type };
 }

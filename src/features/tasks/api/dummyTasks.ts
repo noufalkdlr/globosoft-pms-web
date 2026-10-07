@@ -668,6 +668,28 @@ function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// A content type was renamed: the cards the app named after it follow ("Poster 3"
+// becomes "Posters 3"). A title somebody typed is kept as it is. In the real
+// backend this runs in the same transaction as the rename.
+export function renameCardTitles(
+  contentTypeId: number,
+  oldName: string,
+  newName: string,
+) {
+  const pattern = new RegExp(`^${escapeRegExp(oldName)} (\\d+)$`, "i");
+
+  for (const row of load().tasks) {
+    const match =
+      row.content_type_id === contentTypeId ? pattern.exec(row.title) : null;
+
+    if (match) {
+      row.title = `${newName} ${match[1]}`;
+    }
+  }
+
+  save();
+}
+
 // Whether a title is one the app gave: the type's name and a number ("Poster 3")
 function isAutoTitle(title: string, typeName: string) {
   return new RegExp(`^${escapeRegExp(typeName)} \\d+$`, "i").test(title);
@@ -751,10 +773,12 @@ function validateDates(
 // dropdown only offers those, and this keeps the data consistent if anything
 // else calls the API.
 function validateContentType(clientId: number, month: string, contentTypeId: number) {
+  // A type that was turned off after it went into a plan still works for that
+  // plan: being in the plan for the month is what counts
   const contentType = findContentType(contentTypeId);
 
-  if (!contentType || !contentType.is_active) {
-    throw fakeApiError(422, "Choose an active content type.");
+  if (!contentType) {
+    throw fakeApiError(422, "Choose a content type.");
   }
 
   const inPlan = getPlanForMonth(clientId, month).some(
@@ -911,6 +935,18 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
 
   if (!row || !canSee(user, row)) {
     throw fakeApiError(404, "Card not found.");
+  }
+
+  // Two people editing the same card must never overwrite each other
+  if (!request.updated_at) {
+    throw fakeApiError(422, "updated_at is required.");
+  }
+
+  if (request.updated_at !== row.updated_at) {
+    throw fakeApiError(
+      409,
+      "This card was changed by someone else. Refresh and try again.",
+    );
   }
 
   const editsContent =

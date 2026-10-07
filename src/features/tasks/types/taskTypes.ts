@@ -85,6 +85,10 @@ export interface TaskCreateRequest {
 
 // Only fields that are present change. Not allowed once work has started.
 export interface TaskUpdateRequest {
+  // The `updated_at` the person saw. If the card changed since (someone else
+  // edited or moved it), the change is refused with 409 instead of overwriting
+  // their work. Required.
+  updated_at: string;
   content_type_id?: number;
   month?: string;
   title?: string;

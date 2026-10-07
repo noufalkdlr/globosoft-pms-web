@@ -124,9 +124,11 @@ function MobileBar({ items }: Pick<NavProps, "items">) {
       aria-label="Main"
       className="glass fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 flex items-center gap-1 rounded-3xl p-1.5 md:hidden"
     >
-      {items.map((item) => (
-        <MobileLink key={item.href} item={item} />
-      ))}
+      {items
+        .filter((item) => !item.hideOnMobile)
+        .map((item) => (
+          <MobileLink key={item.href} item={item} />
+        ))}
 
       {/* Temporary: moves to a profile page later */}
       <button

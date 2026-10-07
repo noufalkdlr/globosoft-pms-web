@@ -230,8 +230,8 @@ export function CardFormDialog({
       return;
     }
 
-    // Send only what changed
-    const changes: TaskUpdateRequest = {};
+    // Send only what changed, together with the version of the card we edited
+    const changes: TaskUpdateRequest = { updated_at: task.updated_at };
 
     if (trimmedContent !== task.content) {
       changes.content = trimmedContent;
@@ -257,7 +257,8 @@ export function CardFormDialog({
       changes.assigned_to = assigneeId ? Number(assigneeId) : null;
     }
 
-    if (Object.keys(changes).length === 0) {
+    if (Object.keys(changes).length === 1) {
+      // Only `updated_at` is there: nothing changed
       onClose();
       return;
     }

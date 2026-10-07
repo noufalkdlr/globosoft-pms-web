@@ -27,6 +27,7 @@ export const CLIENT_ENDPOINTS = {
 export const CONTENT_TYPE_ENDPOINTS = {
   list: "/content-types",
   create: "/content-types",
+  detail: (id: number) => `/content-types/${id}`,
 } as const;
 
 export const NOTIFICATION_ENDPOINTS = {

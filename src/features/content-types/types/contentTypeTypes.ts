@@ -10,3 +10,11 @@ export interface ContentType {
 export interface ContentTypeCreateRequest {
   name: string;
 }
+
+// Only fields that are present change. Admins only.
+export interface ContentTypeUpdateRequest {
+  name?: string;
+  // false = turned off: it can no longer be added to a plan, but cards and
+  // plans that already use it keep working
+  is_active?: boolean;
+}

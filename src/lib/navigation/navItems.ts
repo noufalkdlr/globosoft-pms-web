@@ -4,6 +4,7 @@ import {
   House,
   LayoutDashboard,
   SquareKanban,
+  Tags,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,8 @@ export interface NavItem {
   roles?: UserRole[];
   // Show the item only to users who have this permission (admins always do)
   permission?: Permission;
+  // Left out of the narrow mobile bottom bar, which has no room for it
+  hideOnMobile?: boolean;
 }
 
 // Add a new page to the sidebar / mobile bar by adding one entry here
@@ -44,6 +47,13 @@ export const NAV_ITEMS: NavItem[] = [
     roles: ["admin"],
   },
   { label: "Users", href: ROUTES.admin.users, icon: Users, roles: ["admin"] },
+  {
+    label: "Content types",
+    href: ROUTES.admin.contentTypes,
+    icon: Tags,
+    roles: ["admin"],
+    hideOnMobile: true,
+  },
 ];
 
 export function getNavItems(user: AuthUser): NavItem[] {

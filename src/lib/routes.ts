@@ -13,6 +13,7 @@ export const ROUTES = {
   admin: {
     users: "/admin/users",
     teams: "/admin/teams",
+    contentTypes: "/admin/content-types",
   },
 } as const;
 

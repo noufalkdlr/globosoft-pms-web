@@ -4,6 +4,16 @@ What the frontend expects from the FastAPI backend. It grows with every step;
 the dummy API files in the frontend follow these rules exactly, so they double
 as a reference implementation (and as the source of backend test cases).
 
+Two more documents go with it:
+
+- `database.md`: the tables behind these endpoints (columns, constraints, indexes, delete rules).
+- `api-errors.md`: every error the dummy API raises, endpoint by endpoint, with its exact words.
+  The frontend shows `detail` to people as it is, so the backend must answer the **same status
+  with the same words**. It is generated (`npm run docs:errors`), so it cannot drift from the dummy API.
+
+**The rule for changes:** a change that touches data, permissions or validation is made in the dummy
+API, in this file and in `database.md` in the same commit, and `npm run docs:errors` is run.
+
 ## Conventions
 
 - Base URL comes from `VITE_API_URL`. **No trailing slashes** (`/clients`, not `/clients/`).
@@ -79,25 +89,52 @@ Rotates the session using the refresh cookie. `204`, or `401` if it cannot refre
 
 ## Content types
 
-Content types are data, not code: Marketing can add new ones from a dropdown.
-They are never deleted, only deactivated, so old cards keep their type.
+Content types are data, not code: Marketing can add new ones from a dropdown, and an admin renames
+them or turns them off (Admin, Content types). They are never deleted, only turned off, so old
+cards keep their type.
 
 `ContentType`: `{ "id": 1, "name": "Poster", "is_active": true }`
 
+**Turned off** (`is_active: false`) means the type can no longer be **added** to a plan: not when
+creating a client, and not when changing a plan for a type the client does not already have.
+Everything that already uses it keeps working: a client whose plan has the type can save plan
+changes that keep it, and cards can still be written for it, because being in the client's plan
+for the month is what allows a card. Turning it on again undoes it.
+
 ### `GET /content-types`
 
-Any signed-in user. `200` `ContentType[]` ordered by `id`, including inactive ones.
+Any signed-in user (`401` without a session). `200` `ContentType[]` ordered by `id`, including
+inactive ones.
 
 ### `POST /content-types`
 
 Needs `can_manage_clients`. Body: `{ "name": "Carousel" }`. `201` `ContentType`.
 
-- `403` no permission.
+- `403` no permission: `"You don't have permission to add content types."`
 - `409` `"That content type already exists."` (same name ignoring case).
 - `422` name empty or longer than 40 characters.
 
 Rules: trim the name and collapse inner spaces before saving and comparing.
 Unique, case-insensitive (`Poster` and `poster` must never both exist).
+
+### `PATCH /content-types/{id}`
+
+Admins only. Body, every field optional: `{ "name": "Posters", "is_active": false }`.
+`200` `ContentType`. An empty body changes nothing and answers `200`.
+
+- `401` without a session. `403` `"Only admins can change content types."` for anyone else,
+  checked before anything else about the request.
+- `404` `"Content type not found."`
+- `409` `"That content type already exists."` The name is compared like in `POST`, **except that
+  the type itself is left out**, so a type can change the case of its own name.
+- `422` name empty or longer than 40 characters; `is_active` not true or false.
+- Validate everything first; if anything fails, change nothing.
+
+**Renaming also renames the cards the app named after the type**, in the same transaction: a card
+whose `title` is exactly `<old name> <number>` (compared without regard to case) becomes
+`<new name> <number>`. A title someone typed is kept as typed. This does not change the card's
+`updated_at` and sends no notification, because nobody edited the card. (Titles are not unique, so
+in a rare case a renamed card can end up with the same title as a card named by hand.)
 
 ## Clients
 
@@ -170,7 +207,9 @@ Needs `can_manage_clients`. Partial update, `200` `Client`. Any of `name`, `note
 - `notes`: at most 500 characters; blank becomes `null`.
 - `plan.effective_from_month`: `YYYY-MM`, and **not earlier than the current month
   (IST)**. Starting a plan in the past would silently rewrite finished months.
-- each plan item: `content_type_id` must be an active content type; `count` is an
+- each plan item: `content_type_id` must be an active content type, **or a type the client
+  already has in the plan in force on `effective_from_month`** (a type that was turned off stays
+  in plans that already use it); `count` is an
   integer from 1 to 999; a content type appears only once per plan.
 
 ### Plan history
@@ -404,12 +443,26 @@ Partial update, `200` `Task`. Editing content fields (`title`, `content`, `notes
 `content_type_id`, `month`, `posting_date`, `deadline`) needs `can_create_content`;
 changing `assigned_to` needs `can_assign`.
 
+The body always carries `updated_at`, the value the person saw (required, like in the status
+endpoint): `{ "updated_at": "2026-10-06T09:00:00Z", "content": "..." }`. Two people editing, assigning
+or moving the same card must never overwrite each other.
+
+Checks, in this order (the first that fails answers):
+
+1. `404` the card does not exist or is invisible to the user.
+2. `422` `updated_at` is missing: `"updated_at is required."`
+3. `409` `updated_at` is not the card's current value: `"This card was changed by someone else.
+   Refresh and try again."` `updated_at` must change on every write and always get strictly later.
+4. `403` the user may not make this change (see above).
+5. `409` the card is already in progress (below).
+6. `422` validation (*Card validation*).
+
 - A card can only be edited while it is `todo`. After that `409`
   `"This card is already in progress, so it can't be edited."`
 - Setting `assigned_to` gives the card to that designer, and setting it to `null` takes the
   designer off. The `status` stays `todo` either way. Giving a card to a designer sends them an
   `assigned` notification; taking it off sends `unassigned` (see Notifications).
-- `404` unknown or invisible card; `403`, `422` as above.
+- A request that changes nothing but carries a current `updated_at` answers `200` with the card as it is.
 - Validate everything first; if anything fails, change nothing.
 
 ### `PATCH /tasks/{id}/status`
@@ -475,8 +528,9 @@ Needs `can_create_content`. `204` with no body.
 - `notes`: at most 2000 characters, may be empty (`"Use 2000 characters or fewer for the notes."`).
 - `client_id`: an existing, non-archived client.
 - `month`: `YYYY-MM`, this month (IST) or later, at most 24 months ahead.
-- `content_type_id`: an active type that is in the client's plan **for that month**.
-  The dropdown only offers those, and this keeps the data consistent.
+- `content_type_id`: a type that is in the client's plan **for that month**. (Whether the type
+  is turned off does not matter: a plan that already has it keeps it.) The dropdown only offers
+  those, and this keeps the data consistent.
 - `posting_date`, `deadline`: real calendar dates (`2026-02-30` is invalid). If both
   are given, the deadline must not be after the posting date. A deadline that is **set or
   changed** may not be in the past (compared with today in IST): `422`
@@ -719,6 +773,16 @@ Example from the plan: target 12, written 8, done 5 gives `to_write` 4, `deliver
 was never written.
 
 ## Backend tests to write (pytest)
+
+- Content types: `GET` without a session is `401`; `POST` needs `can_manage_clients` (`403`);
+  `PATCH` is admin only (`403` for Marketing, and before any other check); duplicate names ignoring
+  case are `409` but a type may re-case its own name; an unknown id is `404`; an empty body is `200`
+  and changes nothing.
+- Content types: renaming one renames the cards titled `<old name> <n>`, keeps typed titles, and does
+  not change their `updated_at`. A type turned off can stay in a plan that has it and still gets cards,
+  but cannot be added to a new client's plan or to a plan that does not have it (`422`).
+- Cards: `PATCH /tasks/{id}` without `updated_at` is `422`, with an old one `409`; replaying the same
+  request twice makes the second one `409`; assigning a designer needs and moves `updated_at` too.
 
 - A user without `can_manage_clients` gets `403` on every write; an admin never does.
 - Duplicate names (different case, archived clients) give `409`; the failed request creates nothing.

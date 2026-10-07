@@ -44,7 +44,10 @@ export function AssignDialog({ task, onClose }: AssignDialogProps) {
     updateTask.mutate(
       {
         id: task.id,
-        data: { assigned_to: assigneeId ? Number(assigneeId) : null },
+        data: {
+          updated_at: task.updated_at,
+          assigned_to: assigneeId ? Number(assigneeId) : null,
+        },
       },
       {
         onSuccess: onClose,

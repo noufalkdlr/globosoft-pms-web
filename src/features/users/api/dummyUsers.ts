@@ -223,7 +223,11 @@ export function listAssignableUsers(): AssignableUser[] {
 // Who is asking is read from the saved table, not from the session copy: an
 // admin who was demoted or deactivated a moment ago is refused at once, like
 // the real backend refuses a token for an inactive user.
-export function requireAdmin(): UserRow {
+// `deniedMessage` is what a signed-in member is told, so each admin-only area
+// can name itself ("Only admins can see the reports.").
+export function requireAdmin(
+  deniedMessage = "Only admins can manage users.",
+): UserRow {
   const session = readSession();
 
   if (!session) {
@@ -237,7 +241,7 @@ export function requireAdmin(): UserRow {
   }
 
   if (row.role !== "admin") {
-    throw fakeApiError(403, "Only admins can manage users.");
+    throw fakeApiError(403, deniedMessage);
   }
 
   return row;

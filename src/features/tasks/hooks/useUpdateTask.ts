@@ -31,5 +31,10 @@ export function useUpdateTask() {
         toast.success("Card updated");
       }
     },
+    // The dialog shows the error. If the card was changed by someone else, the
+    // lists must show the new version when the person tries again.
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+    },
   });
 }

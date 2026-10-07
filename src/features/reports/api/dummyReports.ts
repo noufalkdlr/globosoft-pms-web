@@ -104,7 +104,7 @@ function resolveRange(params: ReportParams) {
 }
 
 export function getReportSummary(params: ReportParams): ReportSummary {
-  requireAdmin();
+  requireAdmin("Only admins can see the reports.");
 
   const range = resolveRange(params);
   const today = getTodayIst();

@@ -214,7 +214,8 @@ function assertNameIsFree(name: string, ignoreId?: number) {
   }
 }
 
-function validatePlan(change: ClientPlanChange) {
+// `clientId` is missing when the client is being created: it has no plan yet.
+function validatePlan(change: ClientPlanChange, clientId?: number) {
   if (!isValidMonth(change.effective_from_month)) {
     throw fakeApiError(422, "Enter the plan's start month as YYYY-MM.");
   }
@@ -229,10 +230,23 @@ function validatePlan(change: ClientPlanChange) {
 
   const seen = new Set<number>();
 
+  // A type that was turned off cannot be added to a plan, but a client that
+  // already has it keeps it
+  const inForce = new Set(
+    clientId === undefined
+      ? []
+      : getPlanForMonth(clientId, change.effective_from_month).map(
+          (planItem) => planItem.content_type.id,
+        ),
+  );
+
   for (const item of change.items) {
     const contentType = findContentType(item.content_type_id);
 
-    if (!contentType || !contentType.is_active) {
+    if (
+      !contentType ||
+      (!contentType.is_active && !inForce.has(item.content_type_id))
+    ) {
       throw fakeApiError(422, "Choose an active content type.");
     }
 
@@ -364,7 +378,7 @@ export function updateClient(id: number, request: ClientUpdateRequest): Client {
   }
 
   if (request.plan) {
-    validatePlan(request.plan);
+    validatePlan(request.plan, id);
   }
 
   if (name !== undefined) {

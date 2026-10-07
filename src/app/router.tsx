@@ -6,6 +6,7 @@ import { LoginRoute } from "./routes/public/LoginRoute";
 import { BoardRoute } from "./routes/BoardRoute";
 import { CalendarRoute } from "./routes/CalendarRoute";
 import { ClientsRoute } from "./routes/ClientsRoute";
+import { ContentTypesRoute } from "./routes/ContentTypesRoute";
 import { HomeRoute } from "./routes/HomeRoute";
 import { LazyDashboardRoute } from "./routes/LazyDashboardRoute";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
         children: [
           { path: ROUTES.dashboard, element: <LazyDashboardRoute /> },
           { path: ROUTES.admin.users, element: <UsersRoute /> },
+          { path: ROUTES.admin.contentTypes, element: <ContentTypesRoute /> },
         ],
       },
     ],

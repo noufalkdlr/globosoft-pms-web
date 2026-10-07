@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "docs:errors": "node scripts/api-errors.mjs",
+    "docs:errors:check": "node scripts/api-errors.mjs --check"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
