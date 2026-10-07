@@ -60,7 +60,6 @@ function BoardSkeleton() {
 
 function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   const groups: Record<TaskStatus, Task[]> = {
-    new: [],
     todo: [],
     ongoing: [],
     submitted: [],
@@ -72,6 +71,12 @@ function groupByStatus(tasks: Task[]): Record<TaskStatus, Task[]> {
   for (const task of tasks) {
     groups[task.status].push(task);
   }
+
+  // Cards nobody holds yet come first in "To do": they are the ones waiting
+  // for a person to act. The sort is stable, so each half keeps its deadline order.
+  groups.todo.sort(
+    (a, b) => Number(a.assigned_to !== null) - Number(b.assigned_to !== null),
+  );
 
   return groups;
 }
@@ -132,8 +137,8 @@ export function BoardContent() {
   }
 
   // The one place a move starts, whether it came from a drop or from the
-  // "Move to…" list. Moves that need more (a designer, a link, a reason) open
-  // the matching dialog first; the others happen at once.
+  // "Move to…" list. Moves that need more (a link, a reason) open the
+  // matching dialog first; the others happen at once.
   function requestMove(task: Task, to: TaskStatus) {
     const reason = getMoveBlockReason(user, task, to);
 
@@ -143,9 +148,6 @@ export function BoardContent() {
     }
 
     switch (getMoveRule(task.status, to)?.input) {
-      case "designer":
-        setDialog({ kind: "assign", task });
-        return;
       case "file_link":
       case "optional_file_link":
         setDialog({ kind: "submit", task });
@@ -232,6 +234,11 @@ export function BoardContent() {
                 getMoves={getMoves}
                 busyTaskId={busyTaskId}
                 onMove={(task) => setDialog({ kind: "move", task })}
+                onAssign={
+                  canAssign
+                    ? (task) => setDialog({ kind: "assign", task })
+                    : undefined
+                }
                 onOpen={(task) => setDetailsId(task.id)}
               />
             ))}

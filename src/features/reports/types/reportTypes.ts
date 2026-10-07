@@ -16,7 +16,7 @@ export interface ReportParams {
 export interface ReportActivity {
   // Cards written
   created: number;
-  // Cards given to a designer (New to To do)
+  // Cards given to a designer that had none before
   assigned: number;
   started: number;
   submitted: number;
@@ -65,6 +65,9 @@ export interface ReportSummary {
   to: string;
   // The month's cards by their status right now
   status_counts: Record<TaskStatus, number>;
+  // Of those cards, how many have no designer yet. They are counted in
+  // `status_counts.todo` too.
+  unassigned: number;
   activity: ReportActivity;
   plan: { target: number; written: number; delivered: number };
   // All unfinished cards past their deadline right now

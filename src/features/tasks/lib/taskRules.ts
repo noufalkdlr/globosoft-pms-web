@@ -10,20 +10,21 @@ import type { Task, TaskStatus } from "../types/taskTypes";
 // drop, and the dummy backend (and, later, the real one) enforces the same
 // table. The backend must enforce it, because hiding a button protects nothing.
 //
-//   new -> todo        someone with can_assign     picks a designer (assign dialog)
-//   todo -> ongoing    the card's designer
+//   todo -> ongoing    the card's designer (a card nobody holds cannot start)
 //   ongoing -> submitted  the card's designer      gives the link to the finished design
 //   submitted -> done  someone with can_review
 //   submitted -> fix   someone with can_review     must say what to fix (comment)
 //   fix -> submitted   the card's designer         may give a new link
 //
-// Admins may make any move in the table.
+// Admins may make any move in the table, except starting a card nobody holds.
+//
+// Giving a card to a designer is not a move: it is done with the assign dialog
+// (PATCH /tasks/{id} with `assigned_to`) and leaves the card in "todo".
 
-export type MoveActor = "assigner" | "assignee" | "reviewer";
+export type MoveActor = "assignee" | "reviewer";
 
 // What the person making the move has to supply
 export type MoveInput =
-  | "designer" // choose who gets the card
   | "file_link" // the finished design's link is required
   | "optional_file_link" // a link may be given
   | "comment" // a reason is required
@@ -37,7 +38,6 @@ export interface MoveRule {
 }
 
 export const MOVE_RULES: MoveRule[] = [
-  { from: "new", to: "todo", actor: "assigner", input: "designer" },
   { from: "todo", to: "ongoing", actor: "assignee", input: null },
   { from: "ongoing", to: "submitted", actor: "assignee", input: "file_link" },
   { from: "submitted", to: "done", actor: "reviewer", input: null },
@@ -64,13 +64,16 @@ export function canMove(
     return false;
   }
 
+  // A card with no designer cannot be worked on, whoever asks
+  if (rule.actor === "assignee" && !task.assigned_to) {
+    return false;
+  }
+
   if (user.role === "admin") {
     return true;
   }
 
   switch (rule.actor) {
-    case "assigner":
-      return can(user, "can_assign");
     case "reviewer":
       return can(user, "can_review");
     case "assignee":
@@ -106,13 +109,11 @@ export function getMoveBlockReason(
   }
 
   switch (rule.actor) {
-    case "assigner":
-      return "Only someone who can assign cards can give a card to a designer.";
     case "reviewer":
       return "Only a reviewer can approve a card or send it back.";
     case "assignee":
       return task.assigned_to
         ? `Only ${task.assigned_to.name}, who has this card, can move it forward.`
-        : "Only the designer who has this card can move it forward.";
+        : "Give this card to a designer first.";
   }
 }

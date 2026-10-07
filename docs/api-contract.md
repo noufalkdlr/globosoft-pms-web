@@ -301,9 +301,11 @@ A deactivated designer no longer appears in `GET /users/assignable`.
 
 ## Cards (tasks)
 
-A content card and a board task are the same record. A card starts as `new`, becomes
-`todo` when a designer is assigned, and then follows the board flow
-(`ongoing`, `submitted`, `fix`, `done`; the status endpoint comes with the board).
+A content card and a board task are the same record. A card starts as `todo`, with
+`assigned_to` set to `null` until someone gives it to a designer. **Having a designer is not
+a status**: assigning (or taking the designer off) never changes `status`. A `todo` card with
+no designer is shown as "without a designer"; it cannot be started until it has one. From
+`todo` the card follows the board flow (`ongoing`, `submitted`, `fix`, `done`).
 
 `Task`:
 
@@ -316,7 +318,7 @@ A content card and a board task are the same record. A card starts as `new`, bec
   "title": "Poster 3",
   "content": "Caption and talking points...",
   "notes": "Use the brand colours. Logo top-left.",
-  "status": "new",
+  "status": "todo",
   "created_by": { "id": 2, "name": "Marketing Demo" },
   "assigned_to": null,
   "file_link": null,
@@ -328,7 +330,7 @@ A content card and a board task are the same record. A card starts as `new`, bec
 }
 ```
 
-`status` is one of `new`, `todo`, `ongoing`, `submitted`, `fix`, `done`.
+`status` is one of `todo`, `ongoing`, `submitted`, `fix`, `done`.
 `month` is the month the card is for ("YYYY-MM"), not the day it was created.
 `file_link` is the link to the finished design, set when the designer submits.
 `latest_review` is the most recent review or `null`:
@@ -378,7 +380,8 @@ Needs `can_create_content`. `201` `Task`.
 ```
 
 `content`, `notes`, `posting_date`, `deadline` and `assigned_to` are optional. With
-`assigned_to` the card starts as `todo` (this also needs `can_assign`), otherwise as `new`.
+`assigned_to` the card starts with that designer (this also needs `can_assign`); without it the card has
+no designer yet. Either way its `status` is `todo`.
 
 **The title is optional, and the app does not ask for one.** A card is named after its content
 type and a number: `Poster 3`. Without a `title` (or with a blank one) the backend gives it the name
@@ -401,10 +404,11 @@ Partial update, `200` `Task`. Editing content fields (`title`, `content`, `notes
 `content_type_id`, `month`, `posting_date`, `deadline`) needs `can_create_content`;
 changing `assigned_to` needs `can_assign`.
 
-- A card can only be edited while it is `new` or `todo`. After that `409`
+- A card can only be edited while it is `todo`. After that `409`
   `"This card is already in progress, so it can't be edited."`
-- Setting `assigned_to` on a `new` card makes it `todo`. Setting it to `null` on a
-  `todo` card makes it `new`.
+- Setting `assigned_to` gives the card to that designer, and setting it to `null` takes the
+  designer off. The `status` stays `todo` either way. Giving a card to a designer sends them an
+  `assigned` notification; taking it off sends `unassigned` (see Notifications).
 - `404` unknown or invisible card; `403`, `422` as above.
 - Validate everything first; if anything fails, change nothing.
 
@@ -425,7 +429,6 @@ Moves a card along the board. Body:
 
 | from | to | who | also needed |
 |---|---|---|---|
-| `new` | `todo` | `can_assign` | a designer: done with `PATCH /tasks/{id}` and `assigned_to`, not here |
 | `todo` | `ongoing` | the card's designer | |
 | `ongoing` | `submitted` | the card's designer | `file_link` (required) |
 | `submitted` | `done` | `can_review` | `comment` optional; creates an `approved` review |
@@ -433,7 +436,9 @@ Moves a card along the board. Body:
 | `fix` | `submitted` | the card's designer | `file_link` optional (replaces the old one) |
 
 Admins may make any move in the table. Nobody else can: being able to assign or review
-does not let you do the designer's moves.
+does not let you do the designer's moves. **A card with no designer cannot be started by
+anyone, admins included**: give it to a designer first (`PATCH /tasks/{id}` with `assigned_to`).
+There is no move that gives a card to a designer.
 
 Checks, in this order (the first that fails answers):
 
@@ -443,7 +448,8 @@ Checks, in this order (the first that fails answers):
    else. Refresh and try again."` Two people moving the same card must never overwrite
    each other. `updated_at` must change on every write, and always get strictly later.
 4. `409` the move is not in the table: `"A card that is "To do" can't move to "Done"."`
-   (and for `new` to `todo`: `"Assign a designer to move this card to To do."`).
+   Also `409` when the move is a designer's and the card has no designer:
+   `"Give this card to a designer before moving it."`
 5. `403` the user may not make this move.
 6. `422` `file_link` missing or not an http(s) link (at most 500 characters), or `comment`
    missing for `fix` or longer than 1000 characters.
@@ -454,7 +460,7 @@ Do all of it in one transaction: status, link, review and `updated_at` change to
 
 Needs `can_create_content`. `204` with no body.
 
-- A card can only be deleted while it is `new` or `todo`. After that `409`
+- A card can only be deleted while it is `todo`. After that `409`
   `"This card is already in progress, so it can't be deleted."`
 - `404` unknown or invisible card; `403` no permission.
 - The id is never reused, and the month overview drops the card from its counts.
@@ -573,22 +579,23 @@ dashboard replaces the report that used to be typed by hand every evening.
 ### Status history (`task_events`)
 
 A daily report needs to know **when** things happened, and a card only remembers its last
-change. So the backend keeps a history, one row each time a card's status changes:
+change. So the backend keeps a history, one row each time a card's status changes, or a card is given to a designer or loses its designer:
 
 | column | meaning |
 |---|---|
 | `id` | |
 | `task_id` | the card |
+| `kind` | `status` (the card was created, or its status changed), `assigned` (the card got its first designer) or `unassigned` (its designer was taken off) |
 | `from_status` | `null` for the first row, when the card was created |
-| `to_status` | `new`, `todo`, `ongoing`, `submitted`, `fix` or `done` |
+| `to_status` | `todo`, `ongoing`, `submitted`, `fix` or `done`. On `assigned` and `unassigned` rows it equals `from_status` (the status does not change) |
 | `actor_id` | who did it |
 | `created_at` | when (UTC) |
 
-Write a row **in the same transaction** as the status change, in every place a status changes:
-creating a card (`null` to `new`, and `new` to `todo` too if it was created with a designer),
-assigning or un-assigning (`new` and `todo`), and every move in `PATCH /tasks/{id}/status`.
-Changing the designer of a card that is already `todo`, or editing its text, is **not** a
-status change and writes nothing. Use the same timestamp for the `reviews` row of an approval
+Write a row **in the same transaction** as the change, in every place one happens: creating a
+card (a `status` row, `null` to `todo`, and an `assigned` row too if it was created with a
+designer), giving a card that had no designer its first one (`assigned`), taking the designer
+off (`unassigned`), and every move in `PATCH /tasks/{id}/status` (`status`).
+Changing a card from one designer to another, or editing its text, writes nothing. Use the same timestamp for the `reviews` row of an approval
 or rejection. Index `(created_at)` and `(task_id)`. Rows of deleted cards are ignored.
 
 ### `GET /reports/summary`
@@ -605,7 +612,8 @@ IST) for a day, or `month` (`YYYY-MM`, default this month) for a month.
   "month": "2026-10",
   "from": "2026-10-06",
   "to": "2026-10-06",
-  "status_counts": { "new": 2, "todo": 7, "ongoing": 7, "submitted": 4, "fix": 1, "done": 23 },
+  "status_counts": { "todo": 9, "ongoing": 7, "submitted": 4, "fix": 1, "done": 23 },
+  "unassigned": 2,
   "activity": { "created": 3, "assigned": 2, "started": 4, "submitted": 5, "approved": 3, "sent_back": 1 },
   "plan": { "target": 60, "written": 44, "delivered": 23 },
   "overdue": 3,
@@ -633,10 +641,13 @@ IST) for a day, or `month` (`YYYY-MM`, default this month) for a month.
 - `from` and `to`: the first and last day of the period, in IST.
 - `status_counts`: the **month's own cards** (cards whose `month` is this month) by their
   status **right now**.
+- `unassigned`: how many of those cards have no designer (`assigned_to` is null). They are also
+  counted in `status_counts.todo`, so the number of cards waiting for a designer is `unassigned`
+  and the number a designer has not started is `status_counts.todo - unassigned`.
 - `activity`: counted from `task_events` whose IST date is inside the period, for cards that
-  still exist. `created` = `from_status` is null. `assigned` = `new` to `todo`. `started` =
+  still exist. `created` = `from_status` is null. `assigned` = `kind` is `assigned`. `started` =
   to `ongoing`. `submitted` = to `submitted`. `approved` = to `done`. `sent_back` = to `fix`.
-  Anything else (a card going back to `new`) is not counted. **The day is the day in India:**
+  Anything else (a designer being taken off a card) is not counted. **The day is the day in India:**
   an event at 18:45 UTC on the 6th is 00:15 on the 7th.
 - `plan.target`: the sum of the clients' monthly plans for that month. `written`: the month's
   cards. `delivered`: the month's `done` cards.
@@ -719,14 +730,14 @@ was never written.
   `can_assign` on top; a card cannot be edited once it is `ongoing` or later (`409`).
 - Cards: the type must be in the client's plan for the month; past months, impossible dates
   and a deadline after the posting date give `422`; nothing is saved when validation fails.
-- Cards: assigning moves `new` to `todo`, unassigning moves `todo` back to `new`.
+- Cards: assigning or unassigning never changes `status`; a new card is `todo` with `assigned_to` null; a card with no designer cannot be moved to `ongoing` (`409`), not even by an admin.
 - Cards: a Design member only lists cards assigned to them (or written by them); another
   member's card is `404`, not `403`.
 - Overview: target 12, written 8, done 5 gives to_write 4, delivery_remaining 7, to_design 3;
   extra cards give `extra`; a type missing from the plan has `target` 0; archived clients
   appear only for months where they have cards; changing a plan from next month does not
   change this month's overview.
-- Cards: deleting is only possible for `new` and `todo` cards (`409` after that), needs
+- Cards: deleting is only possible for `todo` cards (`409` after that), needs
   `can_create_content` (`403`), hides invisible cards (`404`), and never reuses an id.
 - Moves: every pair of statuses that is not in the table gives `409`; each move in the table
   works for the right person and gives `403` for everyone else (a reviewer cannot start a
@@ -754,9 +765,10 @@ was never written.
 - Assignable users: new Design members appear, deactivated ones and people who moved to Marketing
   disappear, and cards keep showing the name of someone who was deactivated.
 - Reports: admin only (401 / 403); a bad `period`, date or month is 422 with its message.
-- Reports: every card's history starts with a `null` to `new` row, follows its moves in order, and
-  its last row is the card's current status; an assignment or un-assignment writes a row, a change
-  of designer while `todo` or an edit of text writes none; a refused move writes none.
+- Reports: every card's history starts with a `null` to `todo` row, follows its moves in order, and
+  its last `status` row is the card's current status; giving a card its first designer writes an
+  `assigned` row and taking the designer off writes an `unassigned` row, a swap from one designer to
+  another or an edit of text writes none; a refused move writes none.
 - Reports: the day is the day in India (an event at 18:45 UTC on the 6th is counted on the 7th, one
   at 18:15 UTC on the 7th is still the 7th).
 - Reports: the monthly numbers agree with counting the cards by hand; archived clients without

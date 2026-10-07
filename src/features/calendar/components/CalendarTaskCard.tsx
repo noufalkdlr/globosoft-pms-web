@@ -44,7 +44,7 @@ export function CalendarTaskCard({
   const overdue = isOverdue(task, today);
 
   // Once the designer starts, the brief is fixed: no editing, deleting or reassigning
-  const isChangeable = task.status === "new" || task.status === "todo";
+  const isChangeable = task.status === "todo";
   const showEdit = canEdit && isChangeable;
   const showAssign = canAssign && isChangeable;
 

@@ -81,12 +81,19 @@ interface TaskRow {
   updated_at: string;
 }
 
-// One change of a card's status: created, given to a designer, started,
+// What a history line is about: a change of status (including the card being
+// created), or a designer being given / taken off the card. Giving a card to a
+// designer does not change its status, so `from_status` and `to_status` are
+// both "todo" on those lines.
+export type TaskEventKind = "status" | "assigned" | "unassigned";
+
+// One thing that happened to a card: created, given to a designer, started,
 // submitted, approved or sent back. This is the history the daily report
 // counts. (The real backend keeps the same thing in a `task_events` table.)
 interface TaskEventRow {
   id: number;
   task_id: number;
+  kind: TaskEventKind;
   // null for the very first event, when the card was created
   from_status: TaskStatus | null;
   to_status: TaskStatus;
@@ -165,14 +172,42 @@ function messageFor(
   }
 }
 
-// The statuses a card passes through on its way to its current one
-const SEED_PATH: Record<TaskStatus, TaskStatus[]> = {
-  new: ["new"],
-  todo: ["new", "todo"],
-  ongoing: ["new", "todo", "ongoing"],
-  submitted: ["new", "todo", "ongoing", "submitted"],
-  fix: ["new", "todo", "ongoing", "submitted", "fix"],
-  done: ["new", "todo", "ongoing", "submitted", "done"],
+// A card to seed: a status, or "unassigned" for a "todo" card with no designer
+type SeedCard = TaskStatus | "unassigned";
+
+interface SeedStep {
+  to: TaskStatus;
+  kind: TaskEventKind;
+}
+
+const CREATED: SeedStep = { to: "todo", kind: "status" };
+const ASSIGNED: SeedStep = { to: "todo", kind: "assigned" };
+
+// What happened to a card on its way to where it is now
+const SEED_PATH: Record<SeedCard, SeedStep[]> = {
+  unassigned: [CREATED],
+  todo: [CREATED, ASSIGNED],
+  ongoing: [CREATED, ASSIGNED, { to: "ongoing", kind: "status" }],
+  submitted: [
+    CREATED,
+    ASSIGNED,
+    { to: "ongoing", kind: "status" },
+    { to: "submitted", kind: "status" },
+  ],
+  fix: [
+    CREATED,
+    ASSIGNED,
+    { to: "ongoing", kind: "status" },
+    { to: "submitted", kind: "status" },
+    { to: "fix", kind: "status" },
+  ],
+  done: [
+    CREATED,
+    ASSIGNED,
+    { to: "ongoing", kind: "status" },
+    { to: "submitted", kind: "status" },
+    { to: "done", kind: "status" },
+  ],
 };
 
 // A working-hours moment (IST) some days ago, different for every card, never
@@ -221,7 +256,7 @@ function buildSeed(): State {
     clientId: number,
     contentTypeId: number,
     targetMonth: string,
-    statuses: TaskStatus[],
+    seeds: SeedCard[],
   ) {
     const typeName = findContentType(contentTypeId)?.name ?? "Post";
 
@@ -229,9 +264,11 @@ function buildSeed(): State {
     // type, so every title in a client's month is unique
     const batchKey = `${clientId}-${targetMonth}-${contentTypeId}`;
     const alreadyAdded = counters.get(batchKey) ?? 0;
-    counters.set(batchKey, alreadyAdded + statuses.length);
+    counters.set(batchKey, alreadyAdded + seeds.length);
 
-    statuses.forEach((status, index) => {
+    seeds.forEach((seed, index) => {
+      // "unassigned" is a "todo" card that no designer has yet
+      const status: TaskStatus = seed === "unassigned" ? "todo" : seed;
       const id = nextId++;
       const deadlineDay = 8 + ((id * 3) % 16);
       // The moment of the card's last status change; earlier steps are one or
@@ -239,7 +276,7 @@ function buildSeed(): State {
       const finalAt = seedMoment(id, nowDate);
       const stepMs = ((id % 2) + 1) * DAY_MS;
       const assigneeId = WORKER_IDS[id % WORKER_IDS.length];
-      const hasDesigner = status !== "new";
+      const hasDesigner = seed !== "unassigned";
       const hasFile =
         status === "submitted" || status === "done" || status === "fix";
 
@@ -271,7 +308,7 @@ function buildSeed(): State {
       const card = cardLabel(title, findClientRow(clientId)?.name);
       const hoursAgo = (nowDate.getTime() - finalAt.getTime()) / (60 * 60 * 1000);
       const concern: { userId: number; type: NotificationType; note?: string } | null =
-        status === "todo"
+        seed === "todo"
           ? { userId: assigneeId, type: "assigned" }
           : status === "submitted"
             ? { userId: MARKETING_USER_ID, type: "submitted" }
@@ -299,9 +336,9 @@ function buildSeed(): State {
       }
 
       // The history that led to this status
-      const path = SEED_PATH[status];
+      const path = SEED_PATH[seed];
 
-      path.forEach((to, step) => {
+      path.forEach(({ to, kind }, step) => {
         const stepsBeforeEnd = path.length - 1 - step;
         // The designer starts and submits; Marketing writes, assigns and reviews
         const actorId =
@@ -310,7 +347,8 @@ function buildSeed(): State {
         events.push({
           id: nextEventId++,
           task_id: id,
-          from_status: step === 0 ? null : path[step - 1],
+          kind,
+          from_status: step === 0 ? null : path[step - 1].to,
           to_status: to,
           actor_id: actorId,
           created_at: new Date(
@@ -334,7 +372,7 @@ function buildSeed(): State {
         created_by_id: MARKETING_USER_ID,
         assigned_to_id: hasDesigner ? WORKER_IDS[id % WORKER_IDS.length] : null,
         file_link: hasFile ? `https://drive.example.com/file/${id}` : null,
-        posting_date: status === "new" ? null : `${targetMonth}-${pad(deadlineDay + 2)}`,
+        posting_date: seed === "unassigned" ? null : `${targetMonth}-${pad(deadlineDay + 2)}`,
         deadline: `${targetMonth}-${pad(deadlineDay)}`,
         reviews,
         created_at: now,
@@ -343,28 +381,28 @@ function buildSeed(): State {
     });
   }
 
-  const repeat = (status: TaskStatus, times: number) =>
-    Array.from({ length: times }, () => status);
+  const repeat = (seed: SeedCard, times: number) =>
+    Array.from({ length: times }, () => seed);
 
   // Content type ids: 1 Poster, 2 Reel, 3 Story, 4 Carousel, 5 Video, 6 3D
   // Client ids: 1 Fresh Bakes, 2 Urban Gym, 3 Kerala Spice, 4 Dental Care, 5 Auto Hub
 
   // Fresh Bakes: 8 of 12 posters written, 5 done (the example in the docs)
-  addCards(1, 1, month, [...repeat("done", 5), "ongoing", "todo", "new"]);
+  addCards(1, 1, month, [...repeat("done", 5), "ongoing", "todo", "unassigned"]);
   addCards(1, 2, month, ["submitted", "fix"]);
-  addCards(1, 1, nextMonth, ["new", "new", "todo"]);
+  addCards(1, 1, nextMonth, ["unassigned", "unassigned", "todo"]);
 
   // Urban Gym: fully written this month, next month half planned
   addCards(2, 1, month, [...repeat("done", 6), ...repeat("submitted", 2), ...repeat("ongoing", 2)]);
   addCards(2, 3, month, [...repeat("done", 3), ...repeat("todo", 5)]);
-  addCards(2, 1, nextMonth, [...repeat("new", 6), ...repeat("todo", 4)]);
-  addCards(2, 3, nextMonth, repeat("new", 4));
+  addCards(2, 1, nextMonth, [...repeat("unassigned", 6), ...repeat("todo", 4)]);
+  addCards(2, 3, nextMonth, repeat("unassigned", 4));
 
   // Kerala Spice: behind
   addCards(3, 1, month, ["done", "done", "ongoing", "ongoing"]);
 
   // Dental Care
-  addCards(4, 1, month, ["done", "submitted", "ongoing", "todo", "new"]);
+  addCards(4, 1, month, ["done", "submitted", "ongoing", "todo", "unassigned"]);
 
   // Work left over from last month: shows as "late" on the board
   addCards(3, 1, previousMonth, ["done", "ongoing", "fix"]);
@@ -387,6 +425,33 @@ function buildSeed(): State {
 
 let state: State | null = null;
 
+// History saved before "new" was removed had no `kind` and spoke of "new". The
+// old new -> todo step was a designer being given the card; todo -> new, the
+// designer being taken off it.
+function migrateEvent(event: TaskEventRow): TaskEventRow {
+  if (event.kind) {
+    return event;
+  }
+
+  const from = event.from_status as string | null;
+  const to = event.to_status as string;
+
+  if (from === "new" && to === "todo") {
+    return { ...event, kind: "assigned", from_status: "todo", to_status: "todo" };
+  }
+
+  if (from === "todo" && to === "new") {
+    return { ...event, kind: "unassigned", from_status: "todo", to_status: "todo" };
+  }
+
+  return {
+    ...event,
+    kind: "status",
+    from_status: (from === "new" ? "todo" : from) as TaskStatus | null,
+    to_status: (to === "new" ? "todo" : to) as TaskStatus,
+  };
+}
+
 function load(): State {
   if (state) {
     return state;
@@ -408,7 +473,14 @@ function load(): State {
       saved.tasks.forEach((row) => {
         row.reviews ??= [];
         row.notes ??= "";
+
+        // Saved while cards still had a "new" status: it is now a "todo" card
+        // without a designer
+        if ((row.status as string) === "new") {
+          row.status = "todo";
+        }
       });
+      saved.events = saved.events.map(migrateEvent);
 
       state = saved;
       return state;
@@ -478,19 +550,22 @@ function nextTimestamp(previous: string) {
   return now > previous ? now : new Date(Date.parse(previous) + 1).toISOString();
 }
 
-// Writes one line of the status history. Called from every place a status changes.
+// Writes one line of the history. Called from every place a status changes or
+// a designer is given or taken off a card.
 function recordEvent(
   row: TaskRow,
   from: TaskStatus | null,
   to: TaskStatus,
   actorId: number,
   at: string,
+  kind: TaskEventKind = "status",
 ) {
   const current = load();
 
   current.events.push({
     id: current.nextEventId,
     task_id: row.id,
+    kind,
     from_status: from,
     to_status: to,
     actor_id: actorId,
@@ -794,7 +869,7 @@ export function createTask(request: TaskCreateRequest): Task {
     title,
     content,
     notes,
-    status: assigneeId === null ? "new" : "todo",
+    status: "todo",
     created_by_id: user.id,
     assigned_to_id: assigneeId,
     file_link: null,
@@ -808,10 +883,10 @@ export function createTask(request: TaskCreateRequest): Task {
   current.tasks.push(row);
   current.nextId += 1;
 
-  recordEvent(row, null, "new", user.id, now);
+  recordEvent(row, null, "todo", user.id, now);
 
   if (assigneeId !== null) {
-    recordEvent(row, "new", "todo", user.id, now);
+    recordEvent(row, "todo", "todo", user.id, now, "assigned");
     notify(assigneeId, user, "assigned", row);
   }
 
@@ -851,7 +926,7 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
   }
 
   // Once the designer starts, the brief must not change underneath them
-  if (row.status !== "new" && row.status !== "todo") {
+  if (row.status !== "todo") {
     throw fakeApiError(
       409,
       "This card is already in progress, so it can't be edited.",
@@ -916,18 +991,15 @@ export function updateTask(id: number, request: TaskUpdateRequest): Task {
   row.deadline = deadline;
 
   if (request.assigned_to !== undefined) {
-    const statusBefore = row.status;
     row.assigned_to_id = request.assigned_to;
 
-    // Assigning starts the card's life as a task; removing the designer undoes it
-    if (request.assigned_to !== null && row.status === "new") {
-      row.status = "todo";
-    } else if (request.assigned_to === null && row.status === "todo") {
-      row.status = "new";
-    }
-
-    if (row.status !== statusBefore) {
-      recordEvent(row, statusBefore, row.status, user.id, new Date().toISOString());
+    // The status stays "todo" either way. The history notes the card getting
+    // its first designer, or losing its designer (a swap from one designer to
+    // another is not counted).
+    if (designerBefore === null && request.assigned_to !== null) {
+      recordEvent(row, "todo", "todo", user.id, new Date().toISOString(), "assigned");
+    } else if (designerBefore !== null && request.assigned_to === null) {
+      recordEvent(row, "todo", "todo", user.id, new Date().toISOString(), "unassigned");
     }
   }
 
@@ -989,7 +1061,7 @@ function cleanComment(value: string) {
   return comment;
 }
 
-const STATUSES: TaskStatus[] = ["new", "todo", "ongoing", "submitted", "fix", "done"];
+const STATUSES: TaskStatus[] = ["todo", "ongoing", "submitted", "fix", "done"];
 
 // Moves a card along the board. The rules live in lib/taskRules.ts; this
 // enforces them the way the backend must, in this order: the card must be
@@ -1031,11 +1103,12 @@ export function changeTaskStatus(
     );
   }
 
-  // Giving a card to a designer is an assignment, not a plain status change
-  if (rule.input === "designer") {
+  // A card nobody holds cannot be started: it has to be given to a designer
+  // first (PATCH /tasks/{id} with `assigned_to`)
+  if (rule.actor === "assignee" && row.assigned_to_id === null) {
     throw fakeApiError(
       409,
-      "Assign a designer to move this card to To do.",
+      "Give this card to a designer before moving it.",
     );
   }
 
@@ -1128,7 +1201,7 @@ export function deleteTask(id: number): void {
     throw fakeApiError(403, "You don't have permission to delete cards.");
   }
 
-  if (row.status !== "new" && row.status !== "todo") {
+  if (row.status !== "todo") {
     throw fakeApiError(
       409,
       "This card is already in progress, so it can't be deleted.",
@@ -1261,6 +1334,7 @@ export interface ReportTaskRow {
 
 export interface ReportEventRow {
   task_id: number;
+  kind: TaskEventKind;
   from_status: TaskStatus | null;
   to_status: TaskStatus;
   actor_id: number;
@@ -1283,8 +1357,9 @@ export function getReportSource(): {
       deadline,
     })),
     events: events.map(
-      ({ task_id, from_status, to_status, actor_id, created_at }) => ({
+      ({ task_id, kind, from_status, to_status, actor_id, created_at }) => ({
         task_id,
+        kind,
         from_status,
         to_status,
         actor_id,

@@ -19,7 +19,6 @@ interface ChangeStatusVariables {
 type TaskPage = PaginatedResponse<Task>;
 
 const SUCCESS_MESSAGE: Record<TaskStatus, string> = {
-  new: "Card moved back to New",
   todo: "Card moved to To do",
   ongoing: "Moved to Ongoing",
   submitted: "Submitted for approval",

@@ -1,4 +1,10 @@
-import { ArrowRightLeft, ExternalLink, GripVertical, MessageSquareWarning } from "lucide-react";
+import {
+  ArrowRightLeft,
+  ExternalLink,
+  GripVertical,
+  MessageSquareWarning,
+  UserPlus,
+} from "lucide-react";
 
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
@@ -24,6 +30,8 @@ interface BoardCardProps {
   isDragging: boolean;
   // Opens "Move to…". Omitted when this person cannot move the card.
   onMove?: (task: Task) => void;
+  // Opens "Assign a designer". Omitted when this person cannot assign the card.
+  onAssign?: (task: Task) => void;
   // Opens the card's details: its full content, deadline, designer and more
   onOpen: (task: Task) => void;
   // True while a move of this card is being saved
@@ -37,6 +45,7 @@ export function BoardCard({
   dragHandleProps,
   isDragging,
   onMove,
+  onAssign,
   onOpen,
   busy,
 }: BoardCardProps) {
@@ -133,6 +142,19 @@ export function BoardCard({
             <Avatar name={task.assigned_to.name} size="sm" />
             <span className="truncate">{task.assigned_to.name}</span>
           </span>
+        ) : onAssign ? (
+          // The card cannot start until it has a designer, so the way to give
+          // it one is right here
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onAssign(task)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <UserPlus className="size-3.5" aria-hidden="true" />
+            Assign designer
+            <span className="sr-only">for {task.title}</span>
+          </button>
         ) : (
           <Badge variant="danger">Unassigned</Badge>
         )}
@@ -149,6 +171,19 @@ export function BoardCard({
               <ExternalLink className="size-3" aria-hidden="true" />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
+          )}
+
+          {onAssign && task.assigned_to && (
+            <button
+              type="button"
+              aria-label={`Change designer of ${task.title}`}
+              title="Change designer"
+              disabled={busy}
+              onClick={() => onAssign(task)}
+              className="grid size-7 place-items-center rounded-full transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <UserPlus className="size-3.5" aria-hidden="true" />
+            </button>
           )}
 
           {onMove && (

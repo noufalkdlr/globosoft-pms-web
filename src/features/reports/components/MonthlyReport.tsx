@@ -17,7 +17,7 @@ import type {
   ReportSummary,
 } from "../types/reportTypes";
 
-const STATUS_ORDER: TaskStatus[] = ["new", "todo", "ongoing", "submitted", "fix", "done"];
+const STATUS_ORDER: TaskStatus[] = ["todo", "ongoing", "submitted", "fix", "done"];
 
 // "Behind" means a card is past its deadline and not finished
 function ClientStatus({ row }: { row: ClientReportRow }) {
@@ -45,9 +45,14 @@ export function MonthlyReport({ summary }: MonthlyReportProps) {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <MetricTile label="Delivered" value={`${plan.delivered} of ${plan.target}`} />
         <MetricTile label="Written" value={`${plan.written} of ${plan.target}`} />
+        <MetricTile
+          label="Without a designer"
+          value={summary.unassigned}
+          attention
+        />
         <MetricTile label="Waiting for approval" value={counts.submitted} />
         <MetricTile label="In correction" value={counts.fix} />
         <MetricTile label="Overdue" value={summary.overdue} hint="right now" attention />
@@ -57,12 +62,23 @@ export function MonthlyReport({ summary }: MonthlyReportProps) {
         <DonutChart
           title="Cards by status"
           emptyText="No cards for this month yet."
-          slices={STATUS_ORDER.map((status) => ({
-            key: status,
-            label: STATUS_LABEL[status],
-            value: counts[status],
-            color: STATUS_COLORS[status],
-          }))}
+          slices={[
+            // "To do" is split in two: cards waiting for a designer, and cards
+            // a designer has but has not started
+            {
+              key: "unassigned",
+              label: "Without a designer",
+              value: summary.unassigned,
+              color: STATUS_COLORS.unassigned,
+            },
+            ...STATUS_ORDER.map((status) => ({
+              key: status,
+              label: status === "todo" ? "To do" : STATUS_LABEL[status],
+              value:
+                status === "todo" ? counts.todo - summary.unassigned : counts[status],
+              color: STATUS_COLORS[status],
+            })),
+          ]}
         />
         <ClientDeliveryChart rows={summary.by_client} />
       </div>

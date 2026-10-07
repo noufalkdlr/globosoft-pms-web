@@ -30,7 +30,7 @@ import type {
 // Delete this file once the real API is connected.
 
 const IST_OFFSET_MINUTES = 5 * 60 + 30;
-const STATUSES: TaskStatus[] = ["new", "todo", "ongoing", "submitted", "fix", "done"];
+const STATUSES: TaskStatus[] = ["todo", "ongoing", "submitted", "fix", "done"];
 
 // The IST calendar date of a moment: a card approved at 00:15 IST belongs to
 // that day, even though it is still the evening before in UTC
@@ -45,14 +45,18 @@ function emptyActivity(): ReportActivity {
 }
 
 // Which kind of activity an event is, or null for the ones nobody reports
-// (a card going back to New when its designer is removed, for example)
+// (a designer being taken off a card, for example)
 function activityOf(event: ReportEventRow): keyof ReportActivity | null {
   if (event.from_status === null) {
     return "created";
   }
 
-  if (event.from_status === "new" && event.to_status === "todo") {
+  if (event.kind === "assigned") {
     return "assigned";
+  }
+
+  if (event.kind === "unassigned") {
+    return null;
   }
 
   switch (event.to_status) {
@@ -130,6 +134,8 @@ export function getReportSummary(params: ReportParams): ReportSummary {
   for (const card of monthCards) {
     statusCounts[card.status] += 1;
   }
+  // Cards with no designer yet (they are inside the "todo" count too)
+  const unassigned = monthCards.filter((card) => card.assigned_to_id === null).length;
 
   // Unfinished work, right now
   const unfinished = source.tasks.filter((task) => task.status !== "done");
@@ -217,6 +223,7 @@ export function getReportSummary(params: ReportParams): ReportSummary {
     from: range.from,
     to: range.to,
     status_counts: statusCounts,
+    unassigned,
     activity,
     plan: {
       target: planTarget,

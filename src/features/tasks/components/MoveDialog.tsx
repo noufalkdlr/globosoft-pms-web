@@ -6,8 +6,6 @@ import type { Task, TaskStatus } from "../types/taskTypes";
 // What picking each destination will do next, so there are no surprises
 function getHint(task: Task, to: TaskStatus): string {
   switch (to) {
-    case "todo":
-      return "Choose a designer";
     case "ongoing":
       return "Start working on it";
     case "submitted":
@@ -18,7 +16,7 @@ function getHint(task: Task, to: TaskStatus): string {
       return "Approve the design";
     case "fix":
       return "Say what needs fixing";
-    case "new":
+    case "todo":
       return "";
   }
 }

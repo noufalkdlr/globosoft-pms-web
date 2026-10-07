@@ -34,7 +34,7 @@ export function getMarketingSections(
     // Next month's cards are written ahead of time and are not "missing" a
     // designer yet, so only this month and earlier count
     unassigned: tasks.filter(
-      (task) => task.status === "new" && task.month <= currentMonth,
+      (task) => task.assigned_to === null && task.month <= currentMonth,
     ),
     // Due today or already overdue, and not finished
     pendingToday: tasks.filter(
@@ -71,7 +71,7 @@ export function getDesignSections(tasks: Task[], today: string): DesignSections 
       (task) =>
         task.deadline !== null &&
         task.deadline <= limit &&
-        ["new", "todo", "ongoing", "fix"].includes(task.status),
+        ["todo", "ongoing", "fix"].includes(task.status),
     ),
   };
 }

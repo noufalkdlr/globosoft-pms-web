@@ -9,13 +9,19 @@ import { BoardCard } from "./BoardCard";
 import type { Task, TaskStatus } from "../types/taskTypes";
 
 const DOT_CLASS: Record<TaskStatus, string> = {
-  new: "bg-muted-foreground/50",
   todo: "bg-muted-foreground/50",
   ongoing: "bg-brand",
   submitted: "bg-warning",
   fix: "bg-destructive",
   done: "bg-success",
 };
+
+// The card list of a column scrolls inside itself once it is taller than this,
+// so the board always fits the screen and the sideways scrollbar of the
+// board stays in view (instead of sitting at the bottom of a very long page).
+// The subtracted height is the page header, filters and column title above it.
+const LIST_MAX_HEIGHT_CLASS =
+  "max-h-[60dvh] md:max-h-[calc(100dvh-19rem)]";
 
 // While a card is being dragged, every column says whether it can take it
 export type DropState = "idle" | "allowed" | "blocked";
@@ -31,6 +37,8 @@ interface BoardColumnProps {
   // The card whose move is being saved, if any
   busyTaskId: number | undefined;
   onMove: (task: Task) => void;
+  // Opens "Assign a designer" for a card. Omitted when this person cannot assign.
+  onAssign?: (task: Task) => void;
   // Opens a card's details
   onOpen: (task: Task) => void;
 }
@@ -45,9 +53,13 @@ export function BoardColumn({
   getMoves,
   busyTaskId,
   onMove,
+  onAssign,
   onOpen,
 }: BoardColumnProps) {
   const headingId = useId();
+  // Cards in "To do" that still need a designer are said out loud in the heading
+  const withoutDesigner =
+    status === "todo" ? tasks.filter((task) => !task.assigned_to).length : 0;
 
   return (
     <section
@@ -63,7 +75,12 @@ export function BoardColumn({
           />
           {STATUS_LABEL[status]}
         </h2>
-        <Badge aria-label={`${tasks.length} cards`}>{tasks.length}</Badge>
+        <span className="flex items-center gap-1.5">
+          {withoutDesigner > 0 && (
+            <Badge variant="danger">{withoutDesigner} without a designer</Badge>
+          )}
+          <Badge aria-label={`${tasks.length} cards`}>{tasks.length}</Badge>
+        </span>
       </header>
 
       <Droppable droppableId={status}>
@@ -73,7 +90,8 @@ export function BoardColumn({
             {...provided.droppableProps}
             role="list"
             className={cn(
-              "min-h-24 rounded-2xl border border-border bg-white/[0.03] p-2 transition",
+              "min-h-24 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-white/[0.03] p-2 transition",
+              LIST_MAX_HEIGHT_CLASS,
               dropState === "allowed" && "border-brand/40 bg-brand/5",
               dropState === "allowed" &&
                 snapshot.isDraggingOver &&
@@ -110,6 +128,10 @@ export function BoardColumn({
                         dragHandleProps={dragProvided.dragHandleProps}
                         isDragging={dragSnapshot.isDragging}
                         onMove={canMove ? onMove : undefined}
+                        // Only a card that has not started can change hands
+                        onAssign={
+                          task.status === "todo" ? onAssign : undefined
+                        }
                         onOpen={onOpen}
                         busy={isBusy}
                       />

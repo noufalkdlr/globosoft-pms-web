@@ -7,7 +7,6 @@ type BadgeVariant = NonNullable<ComponentProps<typeof Badge>["variant"]>;
 
 // Names match the board columns
 export const STATUS_LABEL: Record<TaskStatus, string> = {
-  new: "New",
   todo: "To do",
   ongoing: "Ongoing",
   submitted: "Waiting for approval",
@@ -16,7 +15,6 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 export const STATUS_VARIANT: Record<TaskStatus, BadgeVariant> = {
-  new: "neutral",
   todo: "neutral",
   ongoing: "brand",
   submitted: "brand",
@@ -26,7 +24,6 @@ export const STATUS_VARIANT: Record<TaskStatus, BadgeVariant> = {
 
 // The board's columns, left to right
 export const BOARD_COLUMNS: TaskStatus[] = [
-  "new",
   "todo",
   "ongoing",
   "submitted",

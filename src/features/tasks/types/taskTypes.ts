@@ -2,10 +2,10 @@
 
 import type { ContentType } from "../../content-types/types/contentTypeTypes";
 
-// new -> todo -> ongoing -> submitted -> done, and submitted -> fix -> submitted.
-// A card is "new" until someone is assigned to it.
+// todo -> ongoing -> submitted -> done, and submitted -> fix -> submitted.
+// "Has a designer yet?" is not a status: a card in "todo" with `assigned_to`
+// null is simply waiting for someone to give it to a designer.
 export type TaskStatus =
-  | "new"
   | "todo"
   | "ongoing"
   | "submitted"
@@ -78,7 +78,8 @@ export interface TaskCreateRequest {
   notes?: string;
   posting_date?: string | null;
   deadline?: string | null;
-  // Needs the can_assign permission. A card created with an assignee starts as "todo".
+  // Needs the can_assign permission. Left out, the card starts in "todo"
+  // without a designer.
   assigned_to?: number | null;
 }
 
@@ -91,7 +92,7 @@ export interface TaskUpdateRequest {
   notes?: string;
   posting_date?: string | null;
   deadline?: string | null;
-  // null removes the assignee (a "todo" card goes back to "new")
+  // null removes the designer. The card stays in "todo", without a designer.
   assigned_to?: number | null;
 }
 

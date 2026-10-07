@@ -4,7 +4,8 @@ import type { ReportActivity } from "../types/reportTypes";
 // for "waiting on someone", green for finished. (Charts are drawn in SVG, so
 // they take plain colour values rather than Tailwind classes.)
 export const STATUS_COLORS = {
-  new: "#8e8e93",
+  // Cards in "todo" that no designer has yet (drawn apart from the rest of "todo")
+  unassigned: "#8e8e93",
   todo: "#6f7d95",
   ongoing: "#e11d2e",
   submitted: "#ffd60a",
