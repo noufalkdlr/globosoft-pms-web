@@ -6,12 +6,13 @@ interface MetricTileProps {
   value: string | number;
   // A small line under the number, e.g. "right now"
   hint?: string;
-  // Makes the number red when it is above zero (something needs action)
-  attention?: boolean;
+  // Colours the number when it is above zero: "warning" (yellow) for work that
+  // waits for someone, "danger" (red) only for what is overdue
+  tone?: "warning" | "danger";
 }
 
-export function MetricTile({ label, value, hint, attention = false }: MetricTileProps) {
-  const needsAttention = attention && Number(value) > 0;
+export function MetricTile({ label, value, hint, tone }: MetricTileProps) {
+  const isAboveZero = Number(value) > 0;
 
   return (
     <GlassCard className="p-4">
@@ -19,7 +20,8 @@ export function MetricTile({ label, value, hint, attention = false }: MetricTile
       <p
         className={cn(
           "mt-1 text-2xl font-semibold tabular-nums",
-          needsAttention && "text-destructive",
+          isAboveZero && tone === "warning" && "text-warning",
+          isAboveZero && tone === "danger" && "text-destructive",
         )}
       >
         {value}

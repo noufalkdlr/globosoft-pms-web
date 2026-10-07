@@ -19,14 +19,22 @@ export function MarketingHome({ tasks, currentMonth, today }: MarketingHomeProps
   const canWriteContent = useCan("can_create_content");
   const sections = getMarketingSections(tasks, today, currentMonth);
   const shared = { currentMonth, today };
+  // Red only when something is really past its deadline; due today is yellow
+  const overdueCount = sections.pendingToday.filter(
+    (task) => task.deadline !== null && task.deadline < today,
+  ).length;
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Waiting for approval" value={sections.waiting.length} attention />
+        <StatTile label="Waiting for approval" value={sections.waiting.length} tone="warning" />
         <StatTile label="In correction" value={sections.correction.length} />
-        <StatTile label="Without a designer" value={sections.unassigned.length} attention />
-        <StatTile label="Due today or overdue" value={sections.pendingToday.length} attention />
+        <StatTile label="Without a designer" value={sections.unassigned.length} tone="warning" />
+        <StatTile
+          label="Due today or overdue"
+          value={sections.pendingToday.length}
+          tone={overdueCount > 0 ? "danger" : "warning"}
+        />
       </div>
 
       {canWriteContent && <NextMonthCard />}
@@ -36,6 +44,7 @@ export function MarketingHome({ tasks, currentMonth, today }: MarketingHomeProps
           title="Waiting for approval"
           tasks={sections.waiting}
           emptyText="Nothing is waiting for your approval."
+          showStatus={false}
           showAssignee
           {...shared}
         />
@@ -50,6 +59,7 @@ export function MarketingHome({ tasks, currentMonth, today }: MarketingHomeProps
           title="In correction"
           tasks={sections.correction}
           emptyText="No card is waiting for a correction."
+          showStatus={false}
           showAssignee
           showNote
           {...shared}
@@ -58,6 +68,7 @@ export function MarketingHome({ tasks, currentMonth, today }: MarketingHomeProps
           title="Ongoing"
           tasks={sections.ongoing}
           emptyText="No card is being worked on right now."
+          showStatus={false}
           showAssignee
           {...shared}
         />

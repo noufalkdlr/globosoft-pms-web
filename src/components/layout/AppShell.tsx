@@ -9,6 +9,7 @@ import { NotificationBell } from "../../features/notifications/components/Notifi
 import { useLogout } from "../../features/auth/hooks/useLogout";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
+import { LogoMark } from "../ui/LogoMark";
 import { GlowBackground } from "./GlowBackground";
 
 import type { AuthUser } from "../../features/auth/types/authTypes";
@@ -59,15 +60,6 @@ function MobileLink({ item }: { item: NavItem }) {
 interface NavProps {
   user: AuthUser;
   items: NavItem[];
-}
-
-// Placeholder mark: swap for the real company logo
-function LogoMark() {
-  return (
-    <div className="grid size-9 place-items-center rounded-xl bg-brand text-sm font-semibold text-brand-foreground shadow-brand-glow">
-      G
-    </div>
-  );
 }
 
 // Desktop: floating glass sidebar, inset from the screen edges

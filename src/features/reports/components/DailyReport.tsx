@@ -1,13 +1,7 @@
-import { useState } from "react";
-import { ClipboardCopy } from "lucide-react";
-
-import { Button } from "../../../components/ui/Button";
 import { ACTIVITY_COLORS, ACTIVITY_LABEL, ACTIVITY_ORDER } from "../lib/reportLabels";
-import { formatDailyReport } from "../lib/formatDailyReport";
 import { DonutChart } from "./DonutChart";
 import { MetricTile } from "./MetricTile";
 import { ReportTable } from "./ReportTable";
-import { ReportTextDialog } from "./ReportTextDialog";
 
 import type {
   ClientReportRow,
@@ -20,18 +14,10 @@ interface DailyReportProps {
 }
 
 export function DailyReport({ summary }: DailyReportProps) {
-  const [isShowingText, setIsShowingText] = useState(false);
   const { activity } = summary;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button variant="glass" className="gap-2" onClick={() => setIsShowingText(true)}>
-          <ClipboardCopy className="size-4" aria-hidden="true" />
-          Copy report
-        </Button>
-      </div>
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         {ACTIVITY_ORDER.map((key) => (
           <MetricTile key={key} label={ACTIVITY_LABEL[key]} value={activity[key]} />
@@ -82,13 +68,6 @@ export function DailyReport({ summary }: DailyReportProps) {
           { key: "overdue", header: "Overdue now", numeric: true, render: (row) => row.overdue },
         ]}
       />
-
-      {isShowingText && (
-        <ReportTextDialog
-          text={formatDailyReport(summary)}
-          onClose={() => setIsShowingText(false)}
-        />
-      )}
     </div>
   );
 }

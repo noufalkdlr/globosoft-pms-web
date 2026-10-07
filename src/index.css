@@ -10,9 +10,16 @@
   --color-brand: #e11d2e; /* replace with the exact red from the company logo */
   --color-brand-foreground: #ffffff;
 
+  /* What each colour means. Keep to it, so red keeps its power to alarm:
+       brand red   the primary action, the selected item, work in progress
+       green       done, good news
+       yellow      waiting for a person to act (unassigned, waiting for approval)
+       orange      needs fixing (a card sent back for correction)
+       red         late or overdue, errors and destructive actions only */
   --color-success: #30d158;
   --color-destructive: #ff453a;
   --color-warning: #ffd60a;
+  --color-caution: #ff9f0a;
 
   /* Brand glows derive from --color-brand, so changing the brand color updates them too */
   --shadow-brand-glow: 0 0 24px
@@ -31,6 +38,28 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+}
+
+/* One focus ring for everything a keyboard can reach. It sits in the base layer,
+   so a control that draws its own ring (inputs use `outline-none` and a glow)
+   still wins. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-brand) 75%, white);
+    outline-offset: 2px;
+  }
+}
+
+/* People who ask their system for less motion get none of ours */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* For panels that open over page content (the notification list): glass on a

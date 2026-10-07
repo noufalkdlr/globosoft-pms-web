@@ -1,6 +1,6 @@
 import { cn } from "../../utils/cn";
 
-type ProgressTone = "brand" | "success" | "warning" | "danger";
+type ProgressTone = "neutral" | "brand" | "success" | "warning" | "danger";
 
 interface ProgressBarProps {
   value: number;
@@ -12,6 +12,7 @@ interface ProgressBarProps {
 }
 
 const TONE_CLASS: Record<ProgressTone, string> = {
+  neutral: "bg-white/45",
   brand: "bg-brand",
   success: "bg-success",
   warning: "bg-warning",

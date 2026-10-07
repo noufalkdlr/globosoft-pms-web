@@ -10,6 +10,7 @@ import {
 } from "recharts";
 
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { toDeliveryBars } from "../lib/deliveryBars";
 import { STATUS_COLORS } from "../lib/reportLabels";
 
@@ -30,6 +31,7 @@ interface ClientDeliveryChartProps {
 export function ClientDeliveryChart({ rows }: ClientDeliveryChartProps) {
   const headingId = useId();
   const data = toDeliveryBars(rows);
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
 
   return (
     <GlassCard role="region" aria-labelledby={headingId} className="p-5">
@@ -81,6 +83,7 @@ export function ClientDeliveryChart({ rows }: ClientDeliveryChartProps) {
                     name={part.label}
                     stackId="client"
                     fill={part.color}
+                    isAnimationActive={!reduceMotion}
                     radius={part.key === "to_write" ? [0, 6, 6, 0] : 0}
                   />
                 ))}

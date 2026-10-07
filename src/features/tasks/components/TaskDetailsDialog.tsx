@@ -91,9 +91,9 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
         </div>
 
         {note && (
-          <div className="flex gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm">
+          <div className="flex gap-2.5 rounded-xl border border-caution/30 bg-caution/10 p-3 text-sm">
             <MessageSquareWarning
-              className="mt-0.5 size-4 shrink-0 text-destructive"
+              className="mt-0.5 size-4 shrink-0 text-caution"
               aria-hidden="true"
             />
             <div className="min-w-0">
@@ -114,7 +114,7 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
                   {task.assigned_to.name}
                 </span>
               ) : (
-                <Badge variant="danger">Unassigned</Badge>
+                <Badge variant="warning">Unassigned</Badge>
               )}
             </dd>
           </div>

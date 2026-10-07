@@ -10,8 +10,11 @@ import { SearchInput } from "../../../components/ui/SearchInput";
 import { useCan } from "../../../hooks/useCan";
 import { useDebouncedValue } from "../../../hooks/useDebouncedValue";
 import { getErrorMessage } from "../../../lib/api/errors";
+import { ROUTES } from "../../../lib/routes";
 import { cn } from "../../../utils/cn";
+import { getDefaultCalendarMonth } from "../../../utils/month";
 import { toast } from "../../../stores/toastStore";
+import { calendarLink } from "../../calendar/lib/calendarLink";
 import { useClients } from "../hooks/useClients";
 import { useUpdateClient } from "../hooks/useUpdateClient";
 import { ClientCard } from "./ClientCard";
@@ -55,6 +58,7 @@ function ClientListSkeleton() {
 
 export function ClientsContent() {
   const canManage = useCan("can_manage_clients");
+  const canWriteContent = useCan("can_create_content");
 
   const tabsId = useId();
   const [tab, setTab] = useState<ClientTab>("active");
@@ -157,6 +161,11 @@ export function ClientsContent() {
           <li key={client.id}>
             <ClientCard
               client={client}
+              href={
+                canWriteContent
+                  ? calendarLink(getDefaultCalendarMonth(), client.id)
+                  : { pathname: ROUTES.board, search: `?client=${client.id}` }
+              }
               canManage={canManage}
               busy={busyClientId === client.id}
               onEdit={setFormTarget}

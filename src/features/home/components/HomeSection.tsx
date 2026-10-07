@@ -19,6 +19,8 @@ interface HomeSectionProps {
   today: string;
   limit?: number;
   showAssignee?: boolean;
+  // Leave it off when every card in the list has the same status
+  showStatus?: boolean;
   showNote?: boolean;
 }
 
@@ -31,6 +33,7 @@ export function HomeSection({
   today,
   limit = DEFAULT_LIMIT,
   showAssignee = false,
+  showStatus = true,
   showNote = false,
 }: HomeSectionProps) {
   const headingId = useId();
@@ -57,6 +60,7 @@ export function HomeSection({
                   currentMonth={currentMonth}
                   today={today}
                   showAssignee={showAssignee}
+                  showStatus={showStatus}
                   showNote={showNote}
                 />
               </li>

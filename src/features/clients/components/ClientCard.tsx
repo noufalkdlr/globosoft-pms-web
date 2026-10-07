@@ -1,4 +1,5 @@
 import { Archive, ArchiveRestore, Pencil } from "lucide-react";
+import { Link, type To } from "react-router";
 
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
@@ -8,6 +9,9 @@ import type { Client } from "../types/clientTypes";
 
 interface ClientCardProps {
   client: Client;
+  // Where the card leads: the client's month in the calendar for people who
+  // write cards, the client's cards on the board for everyone else
+  href: To;
   // Whether the signed-in user may archive or restore clients
   canManage: boolean;
   // True while a request for this client is in flight
@@ -22,6 +26,7 @@ const ICON_BUTTON_CLASS =
 
 export function ClientCard({
   client,
+  href,
   canManage,
   busy,
   onEdit,
@@ -29,12 +34,21 @@ export function ClientCard({
   onRestore,
 }: ClientCardProps) {
   return (
-    <GlassCard className="flex h-full items-start gap-4 p-5">
+    <GlassCard className="relative flex h-full items-start gap-4 p-5 transition hover:bg-white/10">
       <Avatar name={client.name} />
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <h2 className="truncate font-medium">{client.name}</h2>
+          <h2 className="truncate font-medium">
+            {/* The link covers the whole card (the ::after), and the edit and
+                archive buttons sit above it */}
+            <Link
+              to={href}
+              className="rounded after:absolute after:inset-0 after:rounded-3xl hover:underline"
+            >
+              {client.name}
+            </Link>
+          </h2>
           {client.is_archived && <Badge>Archived</Badge>}
         </div>
 
@@ -66,7 +80,7 @@ export function ClientCard({
       </div>
 
       {canManage && (
-        <div className="flex shrink-0 gap-1">
+        <div className="relative z-10 flex shrink-0 gap-1">
           {/* Archived clients are restored first, then edited */}
           {!client.is_archived && (
             <button

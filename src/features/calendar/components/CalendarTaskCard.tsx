@@ -78,7 +78,7 @@ export function CalendarTaskCard({
         {task.content || <span className="italic">No content yet</span>}
       </p>
 
-      <div className="mt-auto flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Badge>{task.content_type.name}</Badge>
 
         {task.deadline && (
@@ -99,13 +99,15 @@ export function CalendarTaskCard({
               {task.assigned_to.name}
             </>
           ) : (
-            <Badge variant="danger">Unassigned</Badge>
+            <Badge variant="warning">Unassigned</Badge>
           )}
         </span>
       </div>
 
       {(showEdit || showAssign) && (
-        <div className="-mb-1 flex justify-end gap-1 border-t border-border pt-2">
+        // Pinned to the bottom, so the buttons line up across a row of cards
+        // even when a neighbour has none
+        <div className="-mb-1 mt-auto flex justify-end gap-1 border-t border-border pt-2">
           {showAssign && (
             <button
               type="button"

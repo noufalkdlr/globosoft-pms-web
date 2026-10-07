@@ -255,11 +255,12 @@ export function BoardContent() {
     return (
       <>
         <DragDropContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          {/* Keyboard users can scroll the columns sideways */}
+          {/* Keyboard users reach the columns through the cards in them, and the
+              page scrolls sideways to follow the focus: the strip itself needs
+              no Tab stop (it would only show a focus line across the page) */}
           <div
             role="region"
             aria-label="Board columns"
-            tabIndex={0}
             className="-mx-5 flex snap-x gap-4 overflow-x-auto px-5 pb-4 md:-mx-8 md:px-8"
           >
             {BOARD_COLUMNS.map((status) => (
@@ -279,6 +280,7 @@ export function BoardContent() {
                     : undefined
                 }
                 onOpen={(task) => setDetailsId(task.id)}
+                showAssignee={seesEverything}
                 collapsed={status === "done" ? isDoneCollapsed : undefined}
                 onToggleCollapsed={
                   status === "done"

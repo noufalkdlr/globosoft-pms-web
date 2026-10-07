@@ -24,10 +24,10 @@ const ICON: Record<NotificationType, LucideIcon> = {
   sent_back: MessageSquareWarning,
 };
 
-// Good news is green, a card sent back is red, everything else is neutral
+// Good news is green, a card sent back is orange, everything else is neutral
 const ICON_CLASS: Partial<Record<NotificationType, string>> = {
   approved: "text-success",
-  sent_back: "text-destructive",
+  sent_back: "text-caution",
 };
 
 interface NotificationItemProps {

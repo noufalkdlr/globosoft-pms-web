@@ -51,11 +51,11 @@ export function MonthlyReport({ summary }: MonthlyReportProps) {
         <MetricTile
           label="Without a designer"
           value={summary.unassigned}
-          attention
+          tone="warning"
         />
         <MetricTile label="Waiting for approval" value={counts.submitted} />
         <MetricTile label="In correction" value={counts.fix} />
-        <MetricTile label="Overdue" value={summary.overdue} hint="right now" attention />
+        <MetricTile label="Overdue" value={summary.overdue} hint="right now" tone="danger" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">

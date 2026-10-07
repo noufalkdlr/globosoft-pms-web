@@ -3,6 +3,7 @@ import { useState } from "react";
 import { GlowBackground } from "../../../components/layout/GlowBackground";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { GoogleButton } from "../../../components/ui/GoogleButton";
+import { LogoMark } from "../../../components/ui/LogoMark";
 import { getErrorMessage } from "../../../lib/api/errors";
 import { useGoogleAuth } from "../hooks/useGoogleAuth";
 import { AccountChooser } from "./AccountChooser";
@@ -20,6 +21,7 @@ export function LoginContent() {
   return (
     <GlowBackground className="grid place-items-center p-6">
       <GlassCard className="w-full max-w-sm">
+        <LogoMark className="mb-5 size-11 text-base" />
         <h1 className="text-2xl font-semibold">Welcome back</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Sign in to Globosoft PMS

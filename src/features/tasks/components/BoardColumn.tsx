@@ -13,7 +13,7 @@ const DOT_CLASS: Record<TaskStatus, string> = {
   todo: "bg-muted-foreground/50",
   ongoing: "bg-brand",
   submitted: "bg-warning",
-  fix: "bg-destructive",
+  fix: "bg-caution",
   done: "bg-success",
 };
 
@@ -40,6 +40,8 @@ interface BoardColumnProps {
   onMove: (task: Task) => void;
   // Opens "Assign a designer" for a card. Omitted when this person cannot assign.
   onAssign?: (task: Task) => void;
+  // Whether cards name their designer (not on a board of one's own cards)
+  showAssignee?: boolean;
   // Opens a card's details
   onOpen: (task: Task) => void;
   // Only for the "Done" column, which can be folded into a narrow strip so the
@@ -60,6 +62,7 @@ export function BoardColumn({
   busyTaskId,
   onMove,
   onAssign,
+  showAssignee = true,
   onOpen,
   collapsed = false,
   onToggleCollapsed,
@@ -144,7 +147,7 @@ export function BoardColumn({
         <span className="flex items-center gap-1.5">
           {withoutDesigner > 0 && (
             <Badge
-              variant="danger"
+              variant="warning"
               className="gap-1 whitespace-nowrap"
               title={`${withoutDesigner} without a designer`}
               aria-label={`${withoutDesigner} without a designer`}
@@ -222,6 +225,7 @@ export function BoardColumn({
                         onAssign={
                           task.status === "todo" ? onAssign : undefined
                         }
+                        showAssignee={showAssignee}
                         onOpen={onOpen}
                         busy={isBusy}
                       />

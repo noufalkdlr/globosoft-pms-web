@@ -46,33 +46,29 @@ export function getMarketingSections(
 }
 
 export interface DesignSections {
-  // Cards to work on, the ones already started first
+  // Cards to work on (to do and ongoing), most urgent deadline first. How soon
+  // each is due shows on its row, so there is no separate "due soon" list that
+  // would repeat the same cards.
   myTasks: Task[];
   todo: Task[];
   ongoing: Task[];
   correction: Task[];
   waiting: Task[];
-  // Unfinished work due within the next days, overdue included
-  dueSoon: Task[];
 }
 
-export function getDesignSections(tasks: Task[], today: string): DesignSections {
+export function getDesignSections(tasks: Task[]): DesignSections {
   const todo = tasks.filter((task) => task.status === "todo");
   const ongoing = tasks.filter((task) => task.status === "ongoing");
-  const limit = addDaysToIsoDate(today, DUE_SOON_DAYS);
 
   return {
-    myTasks: [...ongoing, ...todo],
+    // `tasks` arrive sorted by deadline, and filtering keeps that order
+    myTasks: tasks.filter(
+      (task) => task.status === "todo" || task.status === "ongoing",
+    ),
     todo,
     ongoing,
     correction: tasks.filter((task) => task.status === "fix"),
     waiting: tasks.filter((task) => task.status === "submitted"),
-    dueSoon: tasks.filter(
-      (task) =>
-        task.deadline !== null &&
-        task.deadline <= limit &&
-        ["todo", "ongoing", "fix"].includes(task.status),
-    ),
   };
 }
 
@@ -80,7 +76,10 @@ export function getDesignSections(tasks: Task[], today: string): DesignSections 
 export function getDueLabel(
   task: Pick<Task, "deadline" | "status">,
   today: string,
-): { kind: "none" | "overdue" | "today" | "later"; date: string | null } {
+): {
+  kind: "none" | "overdue" | "today" | "soon" | "later";
+  date: string | null;
+} {
   if (task.deadline === null) {
     return { kind: "none", date: null };
   }
@@ -89,8 +88,14 @@ export function getDueLabel(
     return { kind: "overdue", date: task.deadline };
   }
 
-  return {
-    kind: task.deadline === today ? "today" : "later",
-    date: task.deadline,
-  };
+  if (task.deadline === today) {
+    return { kind: "today", date: task.deadline };
+  }
+
+  // Within the next few days, and not finished: worth a second look
+  const isSoon =
+    task.status !== "done" &&
+    task.deadline <= addDaysToIsoDate(today, DUE_SOON_DAYS);
+
+  return { kind: isSoon ? "soon" : "later", date: task.deadline };
 }

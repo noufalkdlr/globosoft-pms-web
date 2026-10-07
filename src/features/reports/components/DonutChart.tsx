@@ -2,6 +2,7 @@ import { useId } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { useMediaQuery } from "../../../hooks/useMediaQuery";
 
 export interface DonutSlice {
   key: string;
@@ -22,6 +23,9 @@ interface DonutChartProps {
 // exact numbers.
 export function DonutChart({ title, slices, emptyText }: DonutChartProps) {
   const headingId = useId();
+  // The chart animates itself in script, so the CSS rule for reduced motion
+  // cannot reach it
+  const reduceMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const visible = slices.filter((slice) => slice.value > 0);
   const total = visible.reduce((sum, slice) => sum + slice.value, 0);
 
@@ -46,6 +50,7 @@ export function DonutChart({ title, slices, emptyText }: DonutChartProps) {
                   outerRadius={88}
                   paddingAngle={2}
                   stroke="none"
+                  isAnimationActive={!reduceMotion}
                 >
                   {visible.map((slice) => (
                     <Cell key={slice.key} fill={slice.color} />
@@ -72,7 +77,9 @@ export function DonutChart({ title, slices, emptyText }: DonutChartProps) {
             </div>
           </div>
 
-          <ul className="w-full space-y-1.5 text-sm">
+          {/* Capped, so a name and its number stay next to each other even in
+              a card as wide as the page */}
+          <ul className="w-full max-w-xs space-y-1.5 text-sm">
             {slices.map((slice) => (
               <li key={slice.key} className="flex items-center justify-between gap-3">
                 <span className="flex items-center gap-2">

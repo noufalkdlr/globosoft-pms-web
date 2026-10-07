@@ -32,6 +32,9 @@ interface BoardCardProps {
   onMove?: (task: Task) => void;
   // Opens "Assign a designer". Omitted when this person cannot assign the card.
   onAssign?: (task: Task) => void;
+  // False on a board that only holds this person's own cards: their own name on
+  // every card says nothing
+  showAssignee?: boolean;
   // Opens the card's details: its full content, deadline, designer and more
   onOpen: (task: Task) => void;
   // True while a move of this card is being saved
@@ -46,6 +49,7 @@ export function BoardCard({
   isDragging,
   onMove,
   onAssign,
+  showAssignee = true,
   onOpen,
   busy,
 }: BoardCardProps) {
@@ -107,9 +111,9 @@ export function BoardCard({
       </h3>
 
       {note && (
-        <div className="flex gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-2.5 text-xs">
+        <div className="flex gap-2 rounded-xl border border-caution/30 bg-caution/10 p-2.5 text-xs">
           <MessageSquareWarning
-            className="mt-0.5 size-3.5 shrink-0 text-destructive"
+            className="mt-0.5 size-3.5 shrink-0 text-caution"
             aria-hidden="true"
           />
           <div className="min-w-0">
@@ -122,7 +126,9 @@ export function BoardCard({
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <Badge>{task.content_type.name}</Badge>
 
-        {late && (
+        {/* An overdue card already says so in red below; "Late" is for work carried
+            over from an earlier month that is not overdue (no deadline, say) */}
+        {late && !overdue && (
           <Badge
             variant="danger"
             title={`Late from ${formatMonth(task.month)}`}
@@ -145,18 +151,20 @@ export function BoardCard({
 
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         {task.assigned_to ? (
-          <span
-            className="flex min-w-0 items-center gap-2"
-            title={task.assigned_to.name}
-          >
-            <Avatar name={task.assigned_to.name} size="sm" />
-            {/* In a narrow column the name has no width, so only the avatar shows
-                (screen readers still read it, and it appears on hover): a name
-                squeezed to one letter helps nobody */}
-            <span className="w-0 truncate @min-[14rem]:w-auto">
-              {task.assigned_to.name}
+          showAssignee ? (
+            <span
+              className="flex min-w-0 items-center gap-2"
+              title={task.assigned_to.name}
+            >
+              <Avatar name={task.assigned_to.name} size="sm" />
+              {/* In a narrow column the name has no width, so only the avatar shows
+                  (screen readers still read it, and it appears on hover): a name
+                  squeezed to one letter helps nobody */}
+              <span className="w-0 truncate @min-[14rem]:w-auto">
+                {task.assigned_to.name}
+              </span>
             </span>
-          </span>
+          ) : null
         ) : onAssign ? (
           // The card cannot start until it has a designer, so the way to give
           // it one is right here
@@ -164,17 +172,17 @@ export function BoardCard({
             type="button"
             disabled={busy}
             onClick={() => onAssign(task)}
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-warning/40 bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning transition hover:bg-warning/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <UserPlus className="size-3.5" aria-hidden="true" />
             Assign designer
             <span className="sr-only">for {task.title}</span>
           </button>
         ) : (
-          <Badge variant="danger">Unassigned</Badge>
+          <Badge variant="warning">Unassigned</Badge>
         )}
 
-        <span className="flex shrink-0 items-center gap-2">
+        <span className="ml-auto flex shrink-0 items-center gap-2">
           {isSafeLink(task.file_link) && (
             <a
               href={task.file_link}

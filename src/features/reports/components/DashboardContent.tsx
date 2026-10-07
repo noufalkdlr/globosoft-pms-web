@@ -1,5 +1,7 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { ClipboardCopy } from "lucide-react";
 
+import { Button } from "../../../components/ui/Button";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
@@ -7,9 +9,11 @@ import { PillTabs } from "../../../components/ui/PillTabs";
 import { getCurrentMonth } from "../../../utils/month";
 import { useReportParams } from "../hooks/useReportParams";
 import { useReportSummary } from "../hooks/useReportSummary";
+import { formatDailyReport } from "../lib/formatDailyReport";
 import { DailyReport } from "./DailyReport";
 import { DaySwitcher } from "./DaySwitcher";
 import { MonthlyReport } from "./MonthlyReport";
+import { ReportTextDialog } from "./ReportTextDialog";
 
 import type { ReportPeriod } from "../types/reportTypes";
 
@@ -41,6 +45,8 @@ export function DashboardContent() {
   const { period, month, date, today, params, setPeriod, setMonth, setDate } =
     useReportParams();
   const reportQuery = useReportSummary(params);
+  // The daily report as text, to paste into WhatsApp or an email
+  const [isShowingText, setIsShowingText] = useState(false);
 
   function renderReport() {
     if (reportQuery.isPending) {
@@ -85,7 +91,19 @@ export function DashboardContent() {
         {period === "month" ? (
           <MonthSwitcher month={month} currentMonth={getCurrentMonth()} onChange={setMonth} />
         ) : (
-          <DaySwitcher date={date} today={today} onChange={setDate} />
+          <div className="flex flex-wrap items-center gap-3">
+            <DaySwitcher date={date} today={today} onChange={setDate} />
+            {/* The page's main job for a day, so it sits with the day's controls */}
+            <Button
+              variant="glass"
+              className="h-10 gap-2 px-4 text-sm"
+              disabled={!reportQuery.isSuccess}
+              onClick={() => setIsShowingText(true)}
+            >
+              <ClipboardCopy className="size-4" aria-hidden="true" />
+              Copy report
+            </Button>
+          </div>
         )}
       </div>
 
@@ -97,6 +115,13 @@ export function DashboardContent() {
       >
         {renderReport()}
       </div>
+
+      {isShowingText && period === "day" && reportQuery.isSuccess && (
+        <ReportTextDialog
+          text={formatDailyReport(reportQuery.data)}
+          onClose={() => setIsShowingText(false)}
+        />
+      )}
     </div>
   );
 }

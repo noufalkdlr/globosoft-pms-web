@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { formatShortDate } from "../../../utils/date";
-import { formatMonth } from "../../../utils/month";
+import { formatMonth, formatMonthShort } from "../../../utils/month";
 import { isLate } from "../../tasks/lib/taskDates";
 import { boardLinkFor } from "../../tasks/lib/taskLinks";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
@@ -16,6 +16,8 @@ interface HomeTaskRowProps {
   currentMonth: string;
   today: string;
   showAssignee: boolean;
+  // False in a list where every card has the same status: the list's title says it
+  showStatus: boolean;
   // Shows the reviewer's note on cards sent back for correction
   showNote: boolean;
 }
@@ -25,9 +27,14 @@ export function HomeTaskRow({
   currentMonth,
   today,
   showAssignee,
+  showStatus,
   showNote,
 }: HomeTaskRowProps) {
   const due = getDueLabel(task, today);
+  // An overdue card says so in red already; "Late" adds something only for
+  // carried-over work that is not overdue
+  const showLate = isLate(task, currentMonth) && due.kind !== "overdue";
+  const hasChips = showStatus || showLate || showAssignee;
 
   const note =
     showNote && task.status === "fix" && task.latest_review?.decision === "rejected"
@@ -52,7 +59,9 @@ export function HomeTaskRow({
             className={
               due.kind === "overdue"
                 ? "shrink-0 text-xs text-destructive"
-                : "shrink-0 text-xs text-muted-foreground"
+                : due.kind === "today" || due.kind === "soon"
+                  ? "shrink-0 text-xs text-warning"
+                  : "shrink-0 text-xs text-muted-foreground"
             }
           >
             {due.kind === "today"
@@ -64,28 +73,34 @@ export function HomeTaskRow({
         )}
       </div>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <Badge variant={STATUS_VARIANT[task.status]}>
-          {STATUS_LABEL[task.status]}
-        </Badge>
+      {hasChips && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          {showStatus && (
+            <Badge variant={STATUS_VARIANT[task.status]}>
+              {STATUS_LABEL[task.status]}
+            </Badge>
+          )}
 
-        {isLate(task, currentMonth) && (
-          <Badge variant="danger">Late from {formatMonth(task.month)}</Badge>
-        )}
+          {showLate && (
+            <Badge variant="danger" title={`Late from ${formatMonth(task.month)}`}>
+              Late · {formatMonthShort(task.month)}
+            </Badge>
+          )}
 
-        {showAssignee &&
-          (task.assigned_to ? (
-            <span className="flex items-center gap-1.5">
-              <Avatar name={task.assigned_to.name} size="sm" />
-              {task.assigned_to.name}
-            </span>
-          ) : (
-            <Badge variant="danger">Unassigned</Badge>
-          ))}
-      </div>
+          {showAssignee &&
+            (task.assigned_to ? (
+              <span className="flex items-center gap-1.5">
+                <Avatar name={task.assigned_to.name} size="sm" />
+                {task.assigned_to.name}
+              </span>
+            ) : (
+              <Badge variant="warning">Unassigned</Badge>
+            ))}
+        </div>
+      )}
 
       {note && (
-        <p className="mt-2 line-clamp-2 rounded-xl border border-destructive/30 bg-destructive/10 px-2.5 py-1.5 text-xs">
+        <p className="mt-2 line-clamp-2 rounded-xl border border-caution/30 bg-caution/10 px-2.5 py-1.5 text-xs">
           {note.comment}
         </p>
       )}

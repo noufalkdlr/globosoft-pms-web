@@ -17,8 +17,8 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 export const STATUS_VARIANT: Record<TaskStatus, BadgeVariant> = {
   todo: "neutral",
   ongoing: "brand",
-  submitted: "brand",
-  fix: "danger",
+  submitted: "warning",
+  fix: "caution",
   done: "success",
 };
 

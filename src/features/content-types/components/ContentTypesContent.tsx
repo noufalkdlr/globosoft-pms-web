@@ -92,14 +92,19 @@ export function ContentTypesContent() {
       <ul className="space-y-3">
         {types.map((type) => (
           <li key={type.id}>
-            <GlassCard className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-              <p className="min-w-0 flex-1 basis-40 truncate font-medium">
+            <GlassCard className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3">
+              <p
+                className={
+                  type.is_active
+                    ? "min-w-0 flex-1 basis-40 truncate font-medium"
+                    : "min-w-0 flex-1 basis-40 truncate font-medium text-muted-foreground"
+                }
+              >
                 {type.name}
               </p>
 
-              <Badge variant={type.is_active ? "success" : "neutral"}>
-                {type.is_active ? "In use" : "Turned off"}
-              </Badge>
+              {/* Only the exception is marked: a green badge on every row is noise */}
+              {!type.is_active && <Badge>Turned off</Badge>}
 
               <div className="flex items-center gap-2">
                 <Button
@@ -142,7 +147,9 @@ export function ContentTypesContent() {
   }
 
   return (
-    <div>
+    // A short list of short names: a narrow column reads better than a
+    // 1000px-wide row with a name at one end and two buttons at the other
+    <div className="max-w-2xl">
       <header>
         <h1 className="text-2xl font-semibold">Content types</h1>
         <p className="mt-1 text-sm text-muted-foreground">

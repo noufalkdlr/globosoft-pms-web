@@ -5,7 +5,12 @@ import { GlassCard } from "../../../components/ui/GlassCard";
 import { ProgressBar } from "../../../components/ui/ProgressBar";
 import { ROUTES } from "../../../lib/routes";
 import { cn } from "../../../utils/cn";
-import { addMonths, formatMonth, getCurrentMonth } from "../../../utils/month";
+import {
+  addMonths,
+  formatMonth,
+  getCurrentMonth,
+  getDefaultCalendarMonth,
+} from "../../../utils/month";
 import { useMonthOverview } from "../../calendar/hooks/useMonthOverview";
 import { calendarLink } from "../../calendar/lib/calendarLink";
 import { getProgressState } from "../../calendar/lib/progress";
@@ -19,6 +24,9 @@ export function NextMonthCard() {
   const month = addMonths(getCurrentMonth(), 1);
   const overviewQuery = useMonthOverview(month);
   const rows = overviewQuery.data;
+  // Writers plan the next month in the last days of this one. Before that,
+  // "not started" is expected, so nothing here should look like an alarm.
+  const isPlanningTime = getDefaultCalendarMonth() !== getCurrentMonth();
 
   function renderBody() {
     if (overviewQuery.isPending) {
@@ -77,7 +85,7 @@ export function NextMonthCard() {
             <span
               className={cn(
                 "text-2xl font-semibold tabular-nums",
-                notStarted.length > 0 && "text-destructive",
+                notStarted.length > 0 && isPlanningTime && "text-warning",
               )}
             >
               {notStarted.length}
@@ -93,7 +101,7 @@ export function NextMonthCard() {
           label="Next month cards written"
           value={written}
           max={target}
-          tone={allDone ? "success" : "brand"}
+          tone={allDone ? "success" : isPlanningTime ? "warning" : "neutral"}
         />
 
         {notStarted.length > 0 && (
@@ -101,7 +109,10 @@ export function NextMonthCard() {
             {notStarted.slice(0, NAME_LIMIT).map(({ row }) => (
               <li key={row.client.id}>
                 <Link to={calendarLink(month, row.client.id)}>
-                  <Badge variant="danger" className="transition hover:opacity-80">
+                  <Badge
+                    variant={isPlanningTime ? "warning" : "neutral"}
+                    className="transition hover:opacity-80"
+                  >
                     {row.client.name}
                   </Badge>
                 </Link>
