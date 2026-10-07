@@ -40,6 +40,47 @@ body {
   font-family: var(--font-sans);
 }
 
+/* Scrollbars: slim, with no track, a soft pill that brightens when the pointer is
+   over the thing it scrolls (and more over the bar itself). It sits on the page's
+   dark glass instead of the browser's grey bar with arrows.
+   Chrome, Edge, Safari: the ::-webkit-scrollbar rules. Firefox has no such
+   pseudo-elements, so it gets the standard properties (the @supports line is
+   true only there; Chrome ignores the ::-webkit-scrollbar rules whenever those
+   properties are set, which is why they are not set for everyone). */
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  /* The transparent border leaves a 6px pill inside a 12px grab area */
+  background-color: rgb(255 255 255 / 0.22);
+  background-clip: content-box;
+  border: 3px solid transparent;
+  border-radius: 999px;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.34);
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: rgb(255 255 255 / 0.55);
+}
+
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.34) transparent;
+  }
+}
+
 /* One focus ring for everything a keyboard can reach. It sits in the base layer,
    so a control that draws its own ring (inputs use `outline-none` and a glow)
    still wins. */
