@@ -27,6 +27,32 @@ export interface TaskReview {
   created_at: string;
 }
 
+// What a move asks of the person making it
+export type MoveInput =
+  | "file_link" // the finished design's link is required
+  | "optional_file_link" // a link may be given
+  | "comment" // a reason is required
+  | null;
+
+export interface TaskMove {
+  // Where the card would go
+  status: TaskStatus;
+  input: MoveInput;
+}
+
+// What the signed-in person may do with this card right now, worked out by the
+// backend. The website and the phone app only read it: they never decide who
+// may do what. (The backend refuses anything not listed here anyway.)
+export interface TaskActions {
+  // Change its content, type, dates
+  can_edit: boolean;
+  can_delete: boolean;
+  // Give it to a designer, or take the designer off
+  can_assign: boolean;
+  // The statuses this person may move it to. Empty when none.
+  moves: TaskMove[];
+}
+
 // A card on the content calendar and a task on the board are the same thing
 export interface Task {
   id: number;
@@ -53,6 +79,7 @@ export interface Task {
   deadline: string | null; // "YYYY-MM-DD"
   created_at: string;
   updated_at: string;
+  actions: TaskActions;
 }
 
 export interface TaskListParams {
@@ -100,7 +127,7 @@ export interface TaskUpdateRequest {
   assigned_to?: number | null;
 }
 
-// Moving a card on the board. The rules are in lib/taskRules.ts.
+// Moving a card on the board. Who may move it where is in `Task.actions.moves`.
 export interface TaskStatusChangeRequest {
   status: TaskStatus;
   // The `updated_at` the person saw. If the card changed since (someone else

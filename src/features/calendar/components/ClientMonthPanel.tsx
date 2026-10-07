@@ -57,8 +57,9 @@ export function ClientMonthPanel({
 }: ClientMonthPanelProps) {
   const { client } = overview;
 
-  const canEdit = useCan("can_create_content");
-  const canAssign = useCan("can_assign");
+  // Writing new cards is a permission of the person; what may be done with an
+  // existing card comes with the card (`task.actions`)
+  const canWriteContent = useCan("can_create_content");
   const deleteTask = useDeleteTask();
 
   // "new" = the add form is open, a card = editing it, null = closed
@@ -93,7 +94,7 @@ export function ClientMonthPanel({
     }));
 
   const isPastMonth = month < getCurrentMonth();
-  const canAddCards = canEdit && !isPastMonth && typeOptions.length > 0;
+  const canAddCards = canWriteContent && !isPastMonth && typeOptions.length > 0;
 
   // Which card has a request in flight, so only that card's buttons are disabled
   const busyTaskId = deleteTask.isPending ? deleteTask.variables : undefined;
@@ -160,8 +161,6 @@ export function ClientMonthPanel({
             <CalendarTaskCard
               task={task}
               today={today}
-              canEdit={canEdit}
-              canAssign={canAssign}
               busy={busyTaskId === task.id}
               onEdit={setFormTarget}
               onDelete={setDeleteTarget}

@@ -17,10 +17,6 @@ interface CalendarTaskCardProps {
   task: Task;
   // Today in IST ("YYYY-MM-DD"), passed in so every card agrees on "today"
   today: string;
-  // Whether the signed-in user may edit and delete cards
-  canEdit: boolean;
-  // Whether the signed-in user may choose the designer
-  canAssign: boolean;
   // True while a request for this card is in flight
   busy: boolean;
   onEdit: (task: Task) => void;
@@ -33,8 +29,6 @@ interface CalendarTaskCardProps {
 export function CalendarTaskCard({
   task,
   today,
-  canEdit,
-  canAssign,
   busy,
   onEdit,
   onDelete,
@@ -43,10 +37,10 @@ export function CalendarTaskCard({
 }: CalendarTaskCardProps) {
   const overdue = isOverdue(task, today);
 
-  // Once the designer starts, the brief is fixed: no editing, deleting or reassigning
-  const isChangeable = task.status === "todo";
-  const showEdit = canEdit && isChangeable;
-  const showAssign = canAssign && isChangeable;
+  // What this person may do with this card comes with the card (once the
+  // designer starts, the brief is fixed and all of these are false)
+  const { can_edit: showEdit, can_delete: showDelete, can_assign: showAssign } =
+    task.actions;
 
   return (
     <GlassCard
@@ -104,7 +98,7 @@ export function CalendarTaskCard({
         </span>
       </div>
 
-      {(showEdit || showAssign) && (
+      {(showEdit || showDelete || showAssign) && (
         // Pinned to the bottom, so the buttons line up across a row of cards
         // even when a neighbour has none
         <div className="-mb-1 mt-auto flex justify-end gap-1 border-t border-border pt-2">
@@ -121,28 +115,28 @@ export function CalendarTaskCard({
             </button>
           )}
           {showEdit && (
-            <>
-              <button
-                type="button"
-                aria-label={`Edit ${task.title}`}
-                title="Edit"
-                disabled={busy}
-                onClick={() => onEdit(task)}
-                className={ICON_BUTTON_CLASS}
-              >
-                <Pencil className="size-4" aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Delete ${task.title}`}
-                title="Delete"
-                disabled={busy}
-                onClick={() => onDelete(task)}
-                className={ICON_BUTTON_CLASS}
-              >
-                <Trash2 className="size-4" aria-hidden="true" />
-              </button>
-            </>
+            <button
+              type="button"
+              aria-label={`Edit ${task.title}`}
+              title="Edit"
+              disabled={busy}
+              onClick={() => onEdit(task)}
+              className={ICON_BUTTON_CLASS}
+            >
+              <Pencil className="size-4" aria-hidden="true" />
+            </button>
+          )}
+          {showDelete && (
+            <button
+              type="button"
+              aria-label={`Delete ${task.title}`}
+              title="Delete"
+              disabled={busy}
+              onClick={() => onDelete(task)}
+              className={ICON_BUTTON_CLASS}
+            >
+              <Trash2 className="size-4" aria-hidden="true" />
+            </button>
           )}
         </div>
       )}

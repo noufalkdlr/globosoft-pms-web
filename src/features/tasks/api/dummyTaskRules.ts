@@ -1,14 +1,25 @@
 import { can } from "../../../lib/permissions";
 
-import { STATUS_LABEL } from "./taskStatus";
+import { STATUS_LABEL } from "../lib/taskStatus";
 
 import type { AuthUser } from "../../auth/types/authTypes";
-import type { Task, TaskStatus } from "../types/taskTypes";
+import type {
+  MoveInput,
+  Task,
+  TaskActions,
+  TaskStatus,
+} from "../types/taskTypes";
 
-// The rules for moving a card from one status to another. This is the single
-// place they are written: the board uses it to decide which columns accept a
-// drop, and the dummy backend (and, later, the real one) enforces the same
-// table. The backend must enforce it, because hiding a button protects nothing.
+// TEMPORARY: the backend's rules about who may do what with a card. Delete this
+// file once the real API is connected (the real backend has the same table).
+//
+// The frontend does NOT read this file. It reads `Task.actions`, which the
+// backend works out from these rules for the signed-in person (see
+// `getTaskActions` below), so the website and the phone app never write the
+// rules a second time. The backend enforces them too, because hiding a button
+// protects nothing.
+//
+// The rules for moving a card from one status to another:
 //
 //   todo -> ongoing    the card's designer (a card nobody holds cannot start)
 //   ongoing -> submitted  the card's designer      gives the link to the finished design
@@ -22,13 +33,6 @@ import type { Task, TaskStatus } from "../types/taskTypes";
 // (PATCH /tasks/{id} with `assigned_to`) and leaves the card in "todo".
 
 export type MoveActor = "assignee" | "reviewer";
-
-// What the person making the move has to supply
-export type MoveInput =
-  | "file_link" // the finished design's link is required
-  | "optional_file_link" // a link may be given
-  | "comment" // a reason is required
-  | null;
 
 export interface MoveRule {
   from: TaskStatus;
@@ -116,4 +120,23 @@ export function getMoveBlockReason(
         ? `Only ${task.assigned_to.name}, who has this card, can move it forward.`
         : "Give this card to a designer first.";
   }
+}
+
+// What this person may do with this card, as the API sends it in `Task.actions`:
+// the flags for the buttons, and the moves with what each one asks for.
+export function getTaskActions(
+  user: AuthUser | null | undefined,
+  task: Pick<Task, "status" | "assigned_to">,
+): TaskActions {
+  // Editing, deleting and handing the card to a designer stop once work starts
+  const isTodo = task.status === "todo";
+
+  return {
+    can_edit: isTodo && can(user, "can_create_content"),
+    can_delete: isTodo && can(user, "can_create_content"),
+    can_assign: isTodo && can(user, "can_assign"),
+    moves: MOVE_RULES.filter(
+      (rule) => rule.from === task.status && canMove(user, task, rule.to),
+    ).map((rule) => ({ status: rule.to, input: rule.input })),
+  };
 }

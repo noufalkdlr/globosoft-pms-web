@@ -221,10 +221,9 @@ export function BoardColumn({
                         dragHandleProps={dragProvided.dragHandleProps}
                         isDragging={dragSnapshot.isDragging}
                         onMove={canMove ? onMove : undefined}
-                        // Only a card that has not started can change hands
-                        onAssign={
-                          task.status === "todo" ? onAssign : undefined
-                        }
+                        // Whether this person may hand this card to a designer is
+                        // the backend's call
+                        onAssign={task.actions.can_assign ? onAssign : undefined}
                         showAssignee={showAssignee}
                         onOpen={onOpen}
                         busy={isBusy}

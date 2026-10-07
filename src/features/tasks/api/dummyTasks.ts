@@ -17,7 +17,7 @@ import {
 } from "../../users/api/dummyUsers";
 
 import { STATUS_LABEL } from "../lib/taskStatus";
-import { canMove, getMoveRule } from "../lib/taskRules";
+import { canMove, getMoveRule, getTaskActions } from "./dummyTaskRules";
 
 import type { AuthUser } from "../../auth/types/authTypes";
 import type {
@@ -631,6 +631,11 @@ function toTask(row: TaskRow): Task {
     deadline: row.deadline,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    // Worked out for whoever is asking, like the real backend does
+    actions: getTaskActions(readSession(), {
+      status: row.status,
+      assigned_to: row.assigned_to_id === null ? null : toPerson(row.assigned_to_id),
+    }),
   };
 }
 

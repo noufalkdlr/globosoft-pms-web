@@ -365,12 +365,19 @@ no designer is shown as "without a designer"; it cannot be started until it has 
   "posting_date": "2026-11-14",
   "deadline": "2026-11-10",
   "created_at": "2026-10-06T09:00:00Z",
-  "updated_at": "2026-10-06T09:00:00Z"
+  "updated_at": "2026-10-06T09:00:00Z",
+  "actions": {
+    "can_edit": true,
+    "can_delete": true,
+    "can_assign": true,
+    "moves": []
+  }
 }
 ```
 
 `status` is one of `todo`, `ongoing`, `submitted`, `fix`, `done`.
 `month` is the month the card is for ("YYYY-MM"), not the day it was created.
+`actions` is described right below.
 `file_link` is the link to the finished design, set when the designer submits.
 `latest_review` is the most recent review or `null`:
 
@@ -388,6 +395,40 @@ no designer is shown as "without a designer"; it cannot be started until it has 
 rejection whose `comment` the designer sees. Reviews are kept as history in a `reviews`
 table (`id`, `task_id`, `reviewer_id`, `decision`, `comment`, `created_at`); a listing
 endpoint comes with the card detail view.
+
+### `actions`: what the signed-in person may do with a card
+
+Every `Task` the API sends (in lists, after a create, an edit, a move) carries `actions`,
+**worked out by the backend for the person who is asking**:
+
+```json
+"actions": {
+  "can_edit": false,
+  "can_delete": false,
+  "can_assign": false,
+  "moves": [
+    { "status": "done", "input": null },
+    { "status": "fix", "input": "comment" }
+  ]
+}
+```
+
+- `can_edit`: may change the card's content, type and dates (`PATCH /tasks/{id}`). True when the
+  card is `todo` and the person has `can_create_content`.
+- `can_delete`: may delete it. Same condition as `can_edit`.
+- `can_assign`: may give it to a designer or take the designer off. True when the card is `todo`
+  and the person has `can_assign`.
+- `moves`: the statuses the person may move it to with `PATCH /tasks/{id}/status`, in the order of
+  the table there, each with the `input` that move asks for: `null` (nothing),
+  `"file_link"` (the finished design's link is required), `"optional_file_link"`, or
+  `"comment"` (a reason is required). Empty when there is none (a card nobody holds has no moves,
+  not even for an admin).
+
+**The website and the phone app only read `actions`.** They must not work out who may do what
+from `status`, the team's permissions and `assigned_to`: that would write the rules a second and a
+third time, and the copies drift apart. The backend still refuses anything not listed
+(`403`/`409`), because a client can be wrong or changed. The values are as of the moment of the
+response: the person may lose a permission a minute later.
 
 ### `GET /tasks`
 
@@ -773,6 +814,12 @@ Example from the plan: target 12, written 8, done 5 gives `to_write` 4, `deliver
 was never written.
 
 ## Backend tests to write (pytest)
+
+- `actions` and enforcement agree: for every card a user can see and every status, the move is in
+  `actions.moves` exactly when `PATCH /tasks/{id}/status` lets the user make it. (The frontend's
+  dummy API passes this check for every role and card: use it as the model.)
+- `actions.can_edit`, `can_delete` and `can_assign` are false once a card is past `todo`, and false
+  for a designer; an admin's `moves` on a card nobody holds is empty.
 
 - Content types: `GET` without a session is `401`; `POST` needs `can_manage_clients` (`403`);
   `PATCH` is admin only (`403` for Marketing, and before any other check); duplicate names ignoring

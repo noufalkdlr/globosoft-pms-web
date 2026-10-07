@@ -10,20 +10,14 @@ import { useCan } from "../../../hooks/useCan";
 import { useMediaQuery } from "../../../hooks/useMediaQuery";
 import { getErrorMessage } from "../../../lib/api/errors";
 import { toast } from "../../../stores/toastStore";
-import { useAuthStore } from "../../../stores/authStore";
 import { getTodayIst } from "../../../utils/date";
 import { formatMonth, getCurrentMonth } from "../../../utils/month";
 import { useClients } from "../../clients/hooks/useClients";
 import { useBoardCards } from "../hooks/useBoardCards";
 import { useBoardParams } from "../hooks/useBoardParams";
 import { useChangeTaskStatus } from "../hooks/useChangeTaskStatus";
-import {
-  getAllowedMoves,
-  getMoveBlockReason,
-  getMoveRule,
-} from "../lib/taskRules";
 import { filterBoardTasks, getDesignerOptions } from "../lib/boardFilters";
-import { BOARD_COLUMNS } from "../lib/taskStatus";
+import { BOARD_COLUMNS, STATUS_LABEL } from "../lib/taskStatus";
 import { AssignDialog } from "./AssignDialog";
 import { BoardColumn, type DropState } from "./BoardColumn";
 import { MoveDialog } from "./MoveDialog";
@@ -103,8 +97,6 @@ export function BoardContent() {
   const canReview = useCan("can_review");
   const seesEverything = canAssign || canReview;
 
-  const user = useAuthStore((state) => state.user);
-
   const cardsQuery = useBoardCards(month, clientId);
   const clientsQuery = useClients({ is_archived: false, limit: 100 });
   const changeStatus = useChangeTaskStatus();
@@ -145,7 +137,8 @@ export function BoardContent() {
   const detailsTask =
     detailsId === null ? undefined : allTasks.find((task) => task.id === detailsId);
 
-  const getMoves = (task: Task) => getAllowedMoves(user, task);
+  // Who may move a card where is the backend's call: it comes with the card
+  const getMoves = (task: Task) => task.actions.moves.map((move) => move.status);
   const allowedMoves = draggedTask ? getMoves(draggedTask) : [];
   const busyTaskId = changeStatus.isPending
     ? changeStatus.variables?.id
@@ -163,14 +156,20 @@ export function BoardContent() {
   // "Move to…" list. Moves that need more (a link, a reason) open the
   // matching dialog first; the others happen at once.
   function requestMove(task: Task, to: TaskStatus) {
-    const reason = getMoveBlockReason(user, task, to);
+    const move = task.actions.moves.find((candidate) => candidate.status === to);
 
-    if (reason) {
-      toast.error(reason);
+    if (!move) {
+      const options = task.actions.moves.map((candidate) => STATUS_LABEL[candidate.status]);
+
+      toast.error(
+        options.length === 0
+          ? `You can't move ${task.title}.`
+          : `${task.title} can only go to ${options.join(" or ")}.`,
+      );
       return;
     }
 
-    switch (getMoveRule(task.status, to)?.input) {
+    switch (move.input) {
       case "file_link":
       case "optional_file_link":
         setDialog({ kind: "submit", task });
@@ -274,11 +273,7 @@ export function BoardContent() {
                 getMoves={getMoves}
                 busyTaskId={busyTaskId}
                 onMove={(task) => setDialog({ kind: "move", task })}
-                onAssign={
-                  canAssign
-                    ? (task) => setDialog({ kind: "assign", task })
-                    : undefined
-                }
+                onAssign={(task) => setDialog({ kind: "assign", task })}
                 onOpen={(task) => setDetailsId(task.id)}
                 showAssignee={seesEverything}
                 collapsed={status === "done" ? isDoneCollapsed : undefined}
