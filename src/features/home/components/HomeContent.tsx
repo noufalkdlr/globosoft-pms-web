@@ -67,6 +67,7 @@ export function HomeContent() {
   return (
     <div>
       <PageHeader
+        documentTitle="Home"
         // Three pieces of text, not one string: the browser places each piece
         // itself, which is how this title has always been drawn
         title={

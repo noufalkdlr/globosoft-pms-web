@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { cn } from "../../utils/cn";
 
 interface PageHeaderProps {
@@ -7,14 +8,25 @@ interface PageHeaderProps {
   description?: ReactNode;
   // Buttons or controls at the right end (Add client, the month switcher)
   actions?: ReactNode;
+  // The browser tab's name, when the title is not plain text (a greeting)
+  documentTitle?: string;
   // Let the actions drop under the title when there is not room beside it
   wrap?: boolean;
 }
 
 // The top of a page: its title, a line saying what it is for, and on the right
 // what can be done from it.
-export function PageHeader({ title, description, actions, wrap = false }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+  documentTitle,
+  wrap = false,
+}: PageHeaderProps) {
   const hasActions = Boolean(actions);
+
+  // The tab shows the page's name
+  useDocumentTitle(documentTitle ?? (typeof title === "string" ? title : undefined));
 
   return (
     <header

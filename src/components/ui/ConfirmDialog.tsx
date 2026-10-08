@@ -7,6 +7,9 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel: string;
   loading?: boolean;
+  // Hold the confirm button back, e.g. while the app is still finding out what
+  // the person needs to know before saying yes
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -18,6 +21,7 @@ export function ConfirmDialog({
   description,
   confirmLabel,
   loading,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -33,7 +37,7 @@ export function ConfirmDialog({
           <Button variant="ghost" onClick={onCancel} disabled={loading}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} loading={loading}>
+          <Button onClick={onConfirm} loading={loading} disabled={confirmDisabled}>
             {confirmLabel}
           </Button>
         </>

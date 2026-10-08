@@ -13,12 +13,14 @@ import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PublicOnlyRoute } from "./routes/PublicOnlyRoute";
 import { RequirePermission } from "./routes/RequirePermission";
 import { RequireRole } from "./routes/RequireRole";
+import { RouteError } from "./routes/RouteError";
 import { UsersRoute } from "./routes/UsersRoute";
 
 export const router = createBrowserRouter([
   {
     // Layout route: the guard renders once and wraps every child via <Outlet />,
     // so new public pages only need to be added to `children`
+    errorElement: <RouteError fullPage />,
     element: (
       <PublicOnlyRoute>
         <Outlet />
@@ -32,6 +34,7 @@ export const router = createBrowserRouter([
   {
     // Layout route: the auth guard wraps AppShell (sidebar / bottom bar),
     // which renders whichever page is active through its own <Outlet />
+    errorElement: <RouteError fullPage />,
     element: (
       <ProtectedRoute>
         <AppShell />
@@ -39,36 +42,43 @@ export const router = createBrowserRouter([
     ),
     children: [
       {
-        // Home is the members' landing page; admins have the dashboard instead
-        element: (
-          <RequireRole role="member">
-            <Outlet />
-          </RequireRole>
-        ),
-        children: [{ path: ROUTES.home, element: <HomeRoute /> }],
-      },
-      { path: ROUTES.board, element: <BoardRoute /> },
-      { path: ROUTES.clients, element: <ClientsRoute /> },
-      {
-        // The content calendar is for people who write cards
-        element: (
-          <RequirePermission permission="can_create_content">
-            <Outlet />
-          </RequirePermission>
-        ),
-        children: [{ path: ROUTES.calendar, element: <CalendarRoute /> }],
-      },
-      {
-        // Reports and user management are admin-only
-        element: (
-          <RequireRole role="admin">
-            <Outlet />
-          </RequireRole>
-        ),
+        // A page that breaks shows the message inside the frame, so the sidebar
+        // and header stay usable
+        errorElement: <RouteError />,
         children: [
-          { path: ROUTES.dashboard, element: <LazyDashboardRoute /> },
-          { path: ROUTES.admin.users, element: <UsersRoute /> },
-          { path: ROUTES.admin.contentTypes, element: <ContentTypesRoute /> },
+          {
+            // Home is the members' landing page; admins have the dashboard instead
+            element: (
+              <RequireRole role="member">
+                <Outlet />
+              </RequireRole>
+            ),
+            children: [{ path: ROUTES.home, element: <HomeRoute /> }],
+          },
+          { path: ROUTES.board, element: <BoardRoute /> },
+          { path: ROUTES.clients, element: <ClientsRoute /> },
+          {
+            // The content calendar is for people who write cards
+            element: (
+              <RequirePermission permission="can_create_content">
+                <Outlet />
+              </RequirePermission>
+            ),
+            children: [{ path: ROUTES.calendar, element: <CalendarRoute /> }],
+          },
+          {
+            // Reports and user management are admin-only
+            element: (
+              <RequireRole role="admin">
+                <Outlet />
+              </RequireRole>
+            ),
+            children: [
+              { path: ROUTES.dashboard, element: <LazyDashboardRoute /> },
+              { path: ROUTES.admin.users, element: <UsersRoute /> },
+              { path: ROUTES.admin.contentTypes, element: <ContentTypesRoute /> },
+            ],
+          },
         ],
       },
     ],

@@ -24,10 +24,20 @@ export function DeactivateDialog({
   const unfinished =
     cardsQuery.data?.items.filter((task) => task.status !== "done").length ?? 0;
 
-  const warning =
-    unfinished > 0
-      ? ` They still have ${unfinished} unfinished ${unfinished === 1 ? "card" : "cards"}: ${unfinished === 1 ? "it stays" : "they stay"} assigned until you give ${unfinished === 1 ? "it" : "them"} to someone else.`
-      : "";
+  // Never let the admin say yes before they have seen what the person still
+  // holds. If the cards cannot be loaded, say so: they may still go ahead.
+  const isChecking = user !== null && cardsQuery.isPending;
+
+  let warning = "";
+
+  if (isChecking) {
+    warning = " Checking whether they still hold cards…";
+  } else if (cardsQuery.isError) {
+    warning = " We couldn't check whether they still hold cards.";
+  } else if (unfinished > 0) {
+    const one = unfinished === 1;
+    warning = ` They still have ${unfinished} unfinished ${one ? "card" : "cards"}: ${one ? "it stays" : "they stay"} assigned until you give ${one ? "it" : "them"} to someone else.`;
+  }
 
   return (
     <ConfirmDialog
@@ -36,6 +46,7 @@ export function DeactivateDialog({
       description={`They won't be able to sign in. Their account and history are kept, and you can reactivate them anytime.${warning}`}
       confirmLabel="Deactivate"
       loading={loading}
+      confirmDisabled={isChecking}
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

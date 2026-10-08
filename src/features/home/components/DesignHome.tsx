@@ -27,7 +27,9 @@ export function DesignHome({ tasks, currentMonth, today }: DesignHomeProps) {
         <StatTile href={ROUTES.board} label="Waiting for approval" value={sections.waiting.length} />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* items-start: a short list (one correction) keeps its own height instead of
+          stretching to match the longer one */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
         <HomeSection
           title="Corrections"
           tasks={sections.correction}

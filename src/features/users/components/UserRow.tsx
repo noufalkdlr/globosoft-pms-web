@@ -37,9 +37,9 @@ export function UserRow({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={user.role === "admin" ? "brand" : "neutral"}>
-          {user.role === "admin" ? "Admin" : "Member"}
-        </Badge>
+        {/* Only an admin is marked: "Member" on every other row would say nothing
+            the team badge does not. */}
+        {user.role === "admin" && <Badge variant="brand">Admin</Badge>}
         {user.team && <Badge>{user.team.name}</Badge>}
       </div>
 
@@ -59,7 +59,9 @@ export function UserRow({
           !isYou && (
             <Button
               variant="ghost"
-              className="h-10 px-4 text-sm"
+              // Quiet until the pointer or keyboard is on it, then red: it is the
+              // one button on this row that takes someone's access away
+              className="h-10 px-4 text-sm text-muted-foreground hover:text-destructive focus-visible:text-destructive"
               disabled={busy}
               aria-label={`Deactivate ${user.name}`}
               onClick={() => onDeactivate(user)}

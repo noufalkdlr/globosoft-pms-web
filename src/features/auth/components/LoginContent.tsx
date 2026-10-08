@@ -4,6 +4,7 @@ import { GlowBackground } from "../../../components/layout/GlowBackground";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { GoogleButton } from "../../../components/ui/GoogleButton";
 import { LogoMark } from "../../../components/ui/LogoMark";
+import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import { getErrorMessage } from "../../../lib/api/errors";
 import { useGoogleAuth } from "../hooks/useGoogleAuth";
 import { AccountChooser } from "./AccountChooser";
@@ -12,6 +13,8 @@ export function LoginContent() {
   const [isChoosing, setIsChoosing] = useState(false);
 
   const googleAuth = useGoogleAuth();
+
+  useDocumentTitle("Sign in");
 
   function handleSelect(credential: string) {
     setIsChoosing(false);
