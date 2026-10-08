@@ -1,6 +1,8 @@
 import { DEMO_DATA_MODE, demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
+import { can } from "../../../lib/permissions";
 import { getCurrentMonth, isValidMonth } from "../../../utils/month";
+import { readSession } from "../../auth/api/dummySession";
 import { findContentType } from "../../content-types/api/dummyContentTypes";
 
 import type { PaginatedResponse } from "../../../types/paginationTypes";
@@ -308,9 +310,23 @@ function applyPlan(clientId: number, change: ClientPlanChange) {
   }
 }
 
+// Anyone signed in may look at the clients (Design can view); only a team with
+// can_manage_clients may change them (an admin always may)
+function requireSession() {
+  const user = readSession();
+
+  if (!user) {
+    throw fakeApiError(401, "Not authenticated");
+  }
+
+  return user;
+}
+
 export function listClients(
   params: ClientListParams = {},
 ): PaginatedResponse<Client> {
+  requireSession();
+
   const { search = "", is_archived = false, limit = 50, offset = 0 } = params;
   const needle = search.trim().toLowerCase();
 
@@ -331,6 +347,10 @@ export function listClients(
 }
 
 export function createClient(request: ClientCreateRequest): Client {
+  if (!can(requireSession(), "can_manage_clients")) {
+    throw fakeApiError(403, "You don't have permission to manage clients.");
+  }
+
   const current = load();
 
   // Validate everything before changing anything
@@ -362,6 +382,10 @@ export function createClient(request: ClientCreateRequest): Client {
 }
 
 export function updateClient(id: number, request: ClientUpdateRequest): Client {
+  if (!can(requireSession(), "can_manage_clients")) {
+    throw fakeApiError(403, "You don't have permission to manage clients.");
+  }
+
   const row = load().clients.find((client) => client.id === id);
 
   if (!row) {

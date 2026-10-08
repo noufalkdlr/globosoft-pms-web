@@ -129,6 +129,7 @@ No errors of its own (only the general ones above).
 
 | status | detail |
 |---|---|
+| `403` | You don't have permission to manage clients. |
 | `409` | A client with this name already exists. |
 | `422` | A plan change can only start this month or later. |
 | `422` | Choose an active content type. |
@@ -143,6 +144,7 @@ No errors of its own (only the general ones above).
 
 | status | detail |
 |---|---|
+| `403` | You don't have permission to manage clients. |
 | `404` | Client not found. |
 | `409` | A client with this name already exists. |
 | `422` | A plan change can only start this month or later. |

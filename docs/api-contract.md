@@ -7,12 +7,14 @@ as a reference implementation (and as the source of backend test cases).
 Two more documents go with it:
 
 - `database.md`: the tables behind these endpoints (columns, constraints, indexes, delete rules).
+- `testing.md`: the tests, and how they double as the backend's test list.
 - `api-errors.md`: every error the dummy API raises, endpoint by endpoint, with its exact words.
   The frontend shows `detail` to people as it is, so the backend must answer the **same status
   with the same words**. It is generated (`npm run docs:errors`), so it cannot drift from the dummy API.
 
 **The rule for changes:** a change that touches data, permissions or validation is made in the dummy
-API, in this file and in `database.md` in the same commit, and `npm run docs:errors` is run.
+API, in this file and in `database.md` in the same commit, and `npm run docs:errors` and `npm test`
+are run (a new rule gets a test: see `testing.md`).
 
 ## Conventions
 
@@ -192,7 +194,7 @@ Any signed-in user (Design can view). Query: `search`, `is_archived` (default
 
 ### `POST /clients`
 
-Needs `can_manage_clients`. `201` `Client`.
+Needs `can_manage_clients`: `403` `"You don't have permission to manage clients."` otherwise. `201` `Client`.
 
 ```json
 {
@@ -217,7 +219,8 @@ Needs `can_manage_clients`. `201` `Client`.
 
 ### `PATCH /clients/{id}`
 
-Needs `can_manage_clients`. Partial update, `200` `Client`. Any of `name`, `notes`,
+Needs `can_manage_clients` (`403` `"You don't have permission to manage clients."`, checked before
+anything else). Partial update, `200` `Client`. Any of `name`, `notes`,
 `is_archived`, `plan`.
 
 - Archive: `{ "is_archived": true }`. Restore: `{ "is_archived": false }`.
