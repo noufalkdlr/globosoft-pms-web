@@ -16,8 +16,8 @@ export function GlowBackground({ className, children }: GlowBackgroundProps) {
       {/* Two glows, one in the top-left corner and one in the bottom-right, fixed to the window
           so the bottom one stays in view on long pages. -z-10 keeps them behind the content
           inside this isolated stacking context. */}
-      <div className="pointer-events-none fixed -left-56 -top-56 -z-10 size-[600px] rounded-full bg-brand/30 blur-[200px]" />
-      <div className="pointer-events-none fixed -bottom-56 -right-56 -z-10 size-[600px] rounded-full bg-brand/30 blur-[200px]" />
+      <div className="pointer-events-none fixed -left-80 -top-80 -z-10 size-[820px] rounded-full bg-brand/20 blur-[240px]" />
+      <div className="pointer-events-none fixed -bottom-80 -right-80 -z-10 size-[820px] rounded-full bg-brand/20 blur-[240px]" />
       {children}
     </div>
   );
