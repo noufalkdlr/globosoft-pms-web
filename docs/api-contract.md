@@ -31,6 +31,23 @@ API, in this file and in `database.md` in the same commit, and `npm run docs:err
 - The frontend hides what a user may not do, but the **backend must enforce every
   rule and answer `403`**.
 
+### Open decisions (not decided yet)
+
+These are not settled, so the frontend does not depend on them. Decide them when the backend is
+written, then replace this list with the answer.
+
+- **Cookies and CORS.** The frontend sends cookies (`withCredentials`). Needs: the exact web origin
+  allowed by CORS (never `*` with cookies), `Secure` and `HttpOnly` on the session cookie, a
+  `SameSite` value, and protection against cross-site requests (CSRF) if web and API are on
+  different sites. Simplest: serve both under one site (for example `app.` and `api.` of the same
+  domain) with `SameSite=Lax`.
+- **Session and refresh.** How long a session lasts, how `POST /auth/refresh` rotates it, and
+  whether logout revokes it on the server. The frontend only needs: a missing or expired session
+  is `401`, and one `POST /auth/refresh` is tried before the user is sent to login.
+- **Card detail and review history.** `GET /tasks/{id}` and a list of a card's reviews are not
+  built yet; no screen calls them.
+- **Team permissions.** `PATCH /teams/{id}/permissions` does not exist yet; the flags are seed data.
+
 ## Auth
 
 ### `POST /auth/google`

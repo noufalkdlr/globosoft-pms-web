@@ -42,7 +42,6 @@ export const REPORT_ENDPOINTS = {
 
 export const TEAM_ENDPOINTS = {
   list: "/teams",
-  permissions: (id: number) => `/teams/${id}/permissions`,
 } as const;
 
 export const USER_ENDPOINTS = {
