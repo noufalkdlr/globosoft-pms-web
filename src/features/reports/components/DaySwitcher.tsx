@@ -1,9 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { IconButton } from "../../../components/ui/IconButton";
 import { addDaysToIsoDate, formatLongDate } from "../../../utils/date";
-
-const ARROW_BUTTON_CLASS =
-  "grid size-10 place-items-center rounded-full border border-border bg-white/5 text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40";
 
 interface DaySwitcherProps {
   date: string;
@@ -17,28 +15,28 @@ export function DaySwitcher({ date, today, onChange }: DaySwitcherProps) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Previous day"
+        <IconButton
+          size={10}
+          bordered
+          label="Previous day"
           onClick={() => onChange(addDaysToIsoDate(date, -1))}
-          className={ARROW_BUTTON_CLASS}
         >
           <ChevronLeft className="size-5" aria-hidden="true" />
-        </button>
+        </IconButton>
 
         <p aria-live="polite" className="min-w-56 text-center text-base font-semibold">
           {formatLongDate(date)}
         </p>
 
-        <button
-          type="button"
-          aria-label="Next day"
+        <IconButton
+          size={10}
+          bordered
+          label="Next day"
           disabled={date >= today}
           onClick={() => onChange(addDaysToIsoDate(date, 1))}
-          className={ARROW_BUTTON_CLASS}
         >
           <ChevronRight className="size-5" aria-hidden="true" />
-        </button>
+        </IconButton>
       </div>
 
       <input

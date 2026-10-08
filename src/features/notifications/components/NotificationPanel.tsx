@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 
 import { Button } from "../../../components/ui/Button";
+import { useDismissable } from "../../../hooks/useDismissable";
 import { getCurrentMonth } from "../../../utils/month";
 import { boardLinkFor } from "../../tasks/lib/taskLinks";
 import {
@@ -38,48 +39,18 @@ export function NotificationPanel({
 
   const data = query.data;
 
-  // Keyboard and mouse ways out
+  // Keyboard and mouse ways out. Escape puts focus back on the bell. The
+  // position was worked out for this window width, so a change of width closes
+  // the list rather than let it drift.
+  useDismissable([panelRef, anchor], onClose, {
+    returnFocusTo: anchor,
+    closeOnWidthChange: true,
+  });
+
+  // The list takes focus as it opens, so the keyboard works inside it
   useEffect(() => {
     panelRef.current?.focus();
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-        // Back to the bell, so a keyboard user does not lose their place
-        anchor.current?.focus();
-      }
-    }
-
-    function handleMouseDown(event: MouseEvent) {
-      const target = event.target as Node;
-
-      if (!panelRef.current?.contains(target) && !anchor.current?.contains(target)) {
-        onClose();
-      }
-    }
-
-    // The position was worked out for this window width: close rather than
-    // drift. Only a change of width counts: a phone's address bar showing or
-    // hiding changes the height and must not close the list.
-    let width = window.innerWidth;
-
-    function handleResize() {
-      if (window.innerWidth !== width) {
-        width = window.innerWidth;
-        onClose();
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [anchor, onClose]);
+  }, []);
 
   function handleOpen(notification: NotificationRecord) {
     if (!notification.is_read) {

@@ -1,9 +1,11 @@
 import { Link } from "react-router";
 
-import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { formatShortDate } from "../../../utils/date";
-import { formatMonth, formatMonthShort } from "../../../utils/month";
+import { AssigneeChip } from "../../tasks/components/AssigneeChip";
+import { CorrectionNote } from "../../tasks/components/CorrectionNote";
+import { LateBadge } from "../../tasks/components/LateBadge";
+import { UnassignedBadge } from "../../tasks/components/UnassignedBadge";
 import { isLate } from "../../tasks/lib/taskDates";
 import { boardLinkFor } from "../../tasks/lib/taskLinks";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
@@ -81,29 +83,18 @@ export function HomeTaskRow({
             </Badge>
           )}
 
-          {showLate && (
-            <Badge variant="danger" title={`Late from ${formatMonth(task.month)}`}>
-              Late · {formatMonthShort(task.month)}
-            </Badge>
-          )}
+          {showLate && <LateBadge month={task.month} />}
 
           {showAssignee &&
             (task.assigned_to ? (
-              <span className="flex items-center gap-1.5">
-                <Avatar name={task.assigned_to.name} size="sm" />
-                {task.assigned_to.name}
-              </span>
+              <AssigneeChip name={task.assigned_to.name} className="gap-1.5" />
             ) : (
-              <Badge variant="warning">Unassigned</Badge>
+              <UnassignedBadge />
             ))}
         </div>
       )}
 
-      {note && (
-        <p className="mt-2 line-clamp-2 rounded-xl border border-caution/30 bg-caution/10 px-2.5 py-1.5 text-xs">
-          {note.comment}
-        </p>
-      )}
+      {note && <CorrectionNote review={note} variant="line" />}
     </Link>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
@@ -150,13 +151,10 @@ export function ContentTypesContent() {
     // A short list of short names: a narrow column reads better than a
     // 1000px-wide row with a name at one end and two buttons at the other
     <div className="max-w-2xl">
-      <header>
-        <h1 className="text-2xl font-semibold">Content types</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The kinds of posts a client's monthly plan is made of. Marketing adds
-          new ones while setting up a plan. Renaming and turning off is done here.
-        </p>
-      </header>
+      <PageHeader
+        title="Content types"
+        description="The kinds of posts a client's monthly plan is made of. Marketing adds new ones while setting up a plan. Renaming and turning off is done here."
+      />
 
       <div className="mt-6">{renderList()}</div>
 

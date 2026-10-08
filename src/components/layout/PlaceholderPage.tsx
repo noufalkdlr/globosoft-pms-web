@@ -1,3 +1,4 @@
+import { PageHeader } from "./PageHeader";
 import { GlassCard } from "../ui/GlassCard";
 
 interface PlaceholderPageProps {
@@ -10,8 +11,7 @@ interface PlaceholderPageProps {
 export function PlaceholderPage({ title, description }: PlaceholderPageProps) {
   return (
     <div>
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      <PageHeader title={title} description={description} />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 9 }, (_, index) => (

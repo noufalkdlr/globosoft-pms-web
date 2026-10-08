@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { LogOut } from "lucide-react";
 
 import { useLogout } from "../../features/auth/hooks/useLogout";
+import { useDismissable } from "../../hooks/useDismissable";
 import { cn } from "../../utils/cn";
 import { Avatar } from "../ui/Avatar";
 import { Button } from "../ui/Button";
@@ -23,35 +24,18 @@ export function UserMenu({ user }: UserMenuProps) {
 
   const logoutMutation = useLogout();
 
-  // Keyboard and mouse ways out, only while the box is open
+  // Keyboard and mouse ways out, only while the box is open. Escape puts focus
+  // back on the avatar, so a keyboard user does not lose their place.
+  useDismissable([rootRef], () => setIsOpen(false), {
+    enabled: isOpen,
+    returnFocusTo: buttonRef,
+  });
+
+  // A box that has just opened takes focus, so the keyboard works inside it
   useEffect(() => {
-    if (!isOpen) {
-      return;
+    if (isOpen) {
+      panelRef.current?.focus();
     }
-
-    panelRef.current?.focus();
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-        // Back to the avatar, so a keyboard user does not lose their place
-        buttonRef.current?.focus();
-      }
-    }
-
-    function handleMouseDown(event: MouseEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-
-    document.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleMouseDown);
-
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleMouseDown);
-    };
   }, [isOpen]);
 
   return (

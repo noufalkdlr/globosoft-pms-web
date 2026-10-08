@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { ClipboardCopy } from "lucide-react";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
@@ -72,12 +73,10 @@ export function DashboardContent() {
 
   return (
     <div>
-      <header>
-        <h1 className="text-2xl font-semibold">Reports dashboard</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          How the work is going, without typing a report by hand.
-        </p>
-      </header>
+      <PageHeader
+        title="Reports dashboard"
+        description="How the work is going, without typing a report by hand."
+      />
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <PillTabs

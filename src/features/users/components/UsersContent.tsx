@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Plus } from "lucide-react";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
@@ -168,19 +169,16 @@ export function UsersContent() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Users</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Add the people who can sign in, and choose their team and role.
-          </p>
-        </div>
-
-        <Button className="shrink-0 gap-2" onClick={() => setFormTarget("new")}>
-          <Plus className="size-4" aria-hidden="true" />
-          Add user
-        </Button>
-      </div>
+      <PageHeader
+        title="Users"
+        description="Add the people who can sign in, and choose their team and role."
+        actions={
+          <Button className="shrink-0 gap-2" onClick={() => setFormTarget("new")}>
+            <Plus className="size-4" aria-hidden="true" />
+            Add user
+          </Button>
+        }
+      />
 
       <div className="mt-6 grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_10rem] sm:items-end">
         <SearchInput

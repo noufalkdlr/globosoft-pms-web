@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
@@ -97,20 +98,18 @@ export function CalendarContent() {
 
   return (
     <div>
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Content calendar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Plan and track the month's content for every client.
-          </p>
-        </div>
-
-        <MonthSwitcher
-          month={month}
-          currentMonth={getCurrentMonth()}
-          onChange={setMonth}
-        />
-      </header>
+      <PageHeader
+        title="Content calendar"
+        description="Plan and track the month's content for every client."
+        wrap
+        actions={
+          <MonthSwitcher
+            month={month}
+            currentMonth={getCurrentMonth()}
+            onChange={setMonth}
+          />
+        }
+      />
 
       <div
         className={cn(

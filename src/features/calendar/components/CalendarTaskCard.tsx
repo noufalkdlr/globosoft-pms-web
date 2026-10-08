@@ -1,17 +1,16 @@
 import { Pencil, Trash2, UserPlus } from "lucide-react";
 
-import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { IconButton } from "../../../components/ui/IconButton";
 import { isFromInteractiveElement } from "../../../utils/clipboard";
-import { formatShortDate } from "../../../utils/date";
+import { AssigneeChip } from "../../tasks/components/AssigneeChip";
+import { DueDate } from "../../tasks/components/DueDate";
+import { UnassignedBadge } from "../../tasks/components/UnassignedBadge";
 import { isOverdue } from "../../tasks/lib/taskDates";
 import { STATUS_LABEL, STATUS_VARIANT } from "../../tasks/lib/taskStatus";
 
 import type { Task } from "../../tasks/types/taskTypes";
-
-const ICON_BUTTON_CLASS =
-  "grid size-8 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50";
 
 interface CalendarTaskCardProps {
   task: Task;
@@ -75,25 +74,13 @@ export function CalendarTaskCard({
       <div className="flex flex-wrap items-center gap-2">
         <Badge>{task.content_type.name}</Badge>
 
-        {task.deadline && (
-          <span
-            className={
-              overdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"
-            }
-          >
-            Due {formatShortDate(task.deadline)}
-            {overdue && " (overdue)"}
-          </span>
-        )}
+        {task.deadline && <DueDate deadline={task.deadline} overdue={overdue} />}
 
         <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {task.assigned_to ? (
-            <>
-              <Avatar name={task.assigned_to.name} size="sm" />
-              {task.assigned_to.name}
-            </>
+            <AssigneeChip name={task.assigned_to.name} />
           ) : (
-            <Badge variant="warning">Unassigned</Badge>
+            <UnassignedBadge />
           )}
         </span>
       </div>
@@ -103,40 +90,34 @@ export function CalendarTaskCard({
         // even when a neighbour has none
         <div className="-mb-1 mt-auto flex justify-end gap-1 border-t border-border pt-2">
           {showAssign && (
-            <button
-              type="button"
-              aria-label={`Assign ${task.title}`}
+            <IconButton
+              label={`Assign ${task.title}`}
               title={task.assigned_to ? "Change designer" : "Assign a designer"}
               disabled={busy}
               onClick={() => onAssign(task)}
-              className={ICON_BUTTON_CLASS}
             >
               <UserPlus className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
           {showEdit && (
-            <button
-              type="button"
-              aria-label={`Edit ${task.title}`}
+            <IconButton
+              label={`Edit ${task.title}`}
               title="Edit"
               disabled={busy}
               onClick={() => onEdit(task)}
-              className={ICON_BUTTON_CLASS}
             >
               <Pencil className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
           {showDelete && (
-            <button
-              type="button"
-              aria-label={`Delete ${task.title}`}
+            <IconButton
+              label={`Delete ${task.title}`}
               title="Delete"
               disabled={busy}
               onClick={() => onDelete(task)}
-              className={ICON_BUTTON_CLASS}
             >
               <Trash2 className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
         </div>
       )}

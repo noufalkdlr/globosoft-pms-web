@@ -1,21 +1,18 @@
-import {
-  ArrowRightLeft,
-  ExternalLink,
-  GripVertical,
-  MessageSquareWarning,
-  UserPlus,
-} from "lucide-react";
+import { ArrowRightLeft, ExternalLink, GripVertical, UserPlus } from "lucide-react";
 
 import type { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
-import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { IconButton } from "../../../components/ui/IconButton";
 import { cn } from "../../../utils/cn";
 import { isFromInteractiveElement } from "../../../utils/clipboard";
-import { formatShortDate } from "../../../utils/date";
-import { formatMonth, formatMonthShort } from "../../../utils/month";
 import { isLate, isOverdue, isSafeLink } from "../lib/taskDates";
+import { AssigneeChip } from "./AssigneeChip";
+import { CorrectionNote } from "./CorrectionNote";
+import { DueDate } from "./DueDate";
+import { LateBadge } from "./LateBadge";
+import { UnassignedBadge } from "./UnassignedBadge";
 
 import type { Task } from "../types/taskTypes";
 
@@ -110,60 +107,23 @@ export function BoardCard({
         </button>
       </h3>
 
-      {note && (
-        <div className="flex gap-2 rounded-xl border border-caution/30 bg-caution/10 p-2.5 text-xs">
-          <MessageSquareWarning
-            className="mt-0.5 size-3.5 shrink-0 text-caution"
-            aria-hidden="true"
-          />
-          <div className="min-w-0">
-            <p className="line-clamp-3">{note.comment}</p>
-            <p className="mt-1 text-muted-foreground">{note.reviewer.name}</p>
-          </div>
-        </div>
-      )}
+      {note && <CorrectionNote review={note} variant="card" />}
 
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <Badge>{task.content_type.name}</Badge>
 
         {/* An overdue card already says so in red below; "Late" is for work carried
             over from an earlier month that is not overdue (no deadline, say) */}
-        {late && !overdue && (
-          <Badge
-            variant="danger"
-            title={`Late from ${formatMonth(task.month)}`}
-          >
-            Late · {formatMonthShort(task.month)}
-          </Badge>
-        )}
+        {late && !overdue && <LateBadge month={task.month} />}
 
-        {task.deadline && (
-          <span
-            className={
-              overdue ? "text-xs text-destructive" : "text-xs text-muted-foreground"
-            }
-          >
-            Due {formatShortDate(task.deadline)}
-            {overdue && " (overdue)"}
-          </span>
-        )}
+        {task.deadline && <DueDate deadline={task.deadline} overdue={overdue} />}
       </div>
 
       <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         {task.assigned_to ? (
           showAssignee ? (
-            <span
-              className="flex min-w-0 items-center gap-2"
-              title={task.assigned_to.name}
-            >
-              <Avatar name={task.assigned_to.name} size="sm" />
-              {/* In a narrow column the name has no width, so only the avatar shows
-                  (screen readers still read it, and it appears on hover): a name
-                  squeezed to one letter helps nobody */}
-              <span className="w-0 truncate @min-[14rem]:w-auto">
-                {task.assigned_to.name}
-              </span>
-            </span>
+            // In a narrow column only the avatar shows (see AssigneeChip)
+            <AssigneeChip name={task.assigned_to.name} hideNameWhenNarrow />
           ) : null
         ) : onAssign ? (
           // The card cannot start until it has a designer, so the way to give
@@ -179,7 +139,7 @@ export function BoardCard({
             <span className="sr-only">for {task.title}</span>
           </button>
         ) : (
-          <Badge variant="warning">Unassigned</Badge>
+          <UnassignedBadge />
         )}
 
         <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -197,29 +157,27 @@ export function BoardCard({
           )}
 
           {onAssign && task.assigned_to && (
-            <button
-              type="button"
-              aria-label={`Change designer of ${task.title}`}
+            <IconButton
+              size={7}
+              label={`Change designer of ${task.title}`}
               title="Change designer"
               disabled={busy}
               onClick={() => onAssign(task)}
-              className="grid size-7 place-items-center rounded-full transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               <UserPlus className="size-3.5" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
 
           {onMove && (
-            <button
-              type="button"
-              aria-label={`Move ${task.title}`}
+            <IconButton
+              size={7}
+              label={`Move ${task.title}`}
               title="Move to…"
               disabled={busy}
               onClick={() => onMove(task)}
-              className="grid size-7 place-items-center rounded-full transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ArrowRightLeft className="size-3.5" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
         </span>
       </div>

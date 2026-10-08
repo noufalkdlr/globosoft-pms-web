@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
 import { Plus } from "lucide-react";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { Button } from "../../../components/ui/Button";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 import { GlassCard } from "../../../components/ui/GlassCard";
@@ -180,23 +181,22 @@ export function ClientsContent() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Clients</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {canManage
-              ? "Manage your clients and their monthly plans."
-              : "You can view clients. Marketing adds and edits them."}
-          </p>
-        </div>
-
-        {canManage && (
-          <Button className="shrink-0 gap-2" onClick={() => setFormTarget("new")}>
-            <Plus className="size-4" aria-hidden="true" />
-            Add client
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Clients"
+        description={
+          canManage
+            ? "Manage your clients and their monthly plans."
+            : "You can view clients. Marketing adds and edits them."
+        }
+        actions={
+          canManage && (
+            <Button className="shrink-0 gap-2" onClick={() => setFormTarget("new")}>
+              <Plus className="size-4" aria-hidden="true" />
+              Add client
+            </Button>
+          )
+        }
+      />
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <SearchInput

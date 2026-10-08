@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DragDropContext, type DragStart, type DropResult } from "@hello-pangea/dnd";
 
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { MonthSwitcher } from "../../../components/ui/MonthSwitcher";
@@ -299,22 +300,18 @@ export function BoardContent() {
 
   return (
     <div>
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Task board</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {seesEverything
-              ? "Every card, by stage."
-              : "Your cards, by stage."}
-          </p>
-        </div>
-
-        <MonthSwitcher
-          month={month}
-          currentMonth={getCurrentMonth()}
-          onChange={setMonth}
-        />
-      </header>
+      <PageHeader
+        title="Task board"
+        description={seesEverything ? "Every card, by stage." : "Your cards, by stage."}
+        wrap
+        actions={
+          <MonthSwitcher
+            month={month}
+            currentMonth={getCurrentMonth()}
+            onChange={setMonth}
+          />
+        }
+      />
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="w-full sm:w-48">

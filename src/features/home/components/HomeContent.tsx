@@ -1,3 +1,4 @@
+import { PageHeader } from "../../../components/layout/PageHeader";
 import { GlassCard } from "../../../components/ui/GlassCard";
 import { MessageCard } from "../../../components/ui/MessageCard";
 import { useAuthStore } from "../../../stores/authStore";
@@ -65,12 +66,16 @@ export function HomeContent() {
 
   return (
     <div>
-      <header>
-        <h1 className="text-2xl font-semibold">
-          {getGreeting()}, {firstName}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">{formatToday()}</p>
-      </header>
+      <PageHeader
+        // Three pieces of text, not one string: the browser places each piece
+        // itself, which is how this title has always been drawn
+        title={
+          <>
+            {getGreeting()}, {firstName}
+          </>
+        }
+        description={formatToday()}
+      />
 
       <div className="mt-6">{renderBody()}</div>
     </div>

@@ -4,6 +4,7 @@ import { Link, type To } from "react-router";
 import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { GlassCard } from "../../../components/ui/GlassCard";
+import { IconButton } from "../../../components/ui/IconButton";
 
 import type { Client } from "../types/clientTypes";
 
@@ -20,9 +21,6 @@ interface ClientCardProps {
   onArchive: (client: Client) => void;
   onRestore: (client: Client) => void;
 }
-
-const ICON_BUTTON_CLASS =
-  "grid size-9 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50";
 
 export function ClientCard({
   client,
@@ -83,39 +81,36 @@ export function ClientCard({
         <div className="relative z-10 flex shrink-0 gap-1">
           {/* Archived clients are restored first, then edited */}
           {!client.is_archived && (
-            <button
-              type="button"
-              aria-label={`Edit ${client.name}`}
+            <IconButton
+              size={9}
+              label={`Edit ${client.name}`}
               title="Edit"
               disabled={busy}
               onClick={() => onEdit(client)}
-              className={ICON_BUTTON_CLASS}
             >
               <Pencil className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
           {client.is_archived ? (
-            <button
-              type="button"
-              aria-label={`Restore ${client.name}`}
+            <IconButton
+              size={9}
+              label={`Restore ${client.name}`}
               title="Restore"
               disabled={busy}
               onClick={() => onRestore(client)}
-              className={ICON_BUTTON_CLASS}
             >
               <ArchiveRestore className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           ) : (
-            <button
-              type="button"
-              aria-label={`Archive ${client.name}`}
+            <IconButton
+              size={9}
+              label={`Archive ${client.name}`}
               title="Archive"
               disabled={busy}
               onClick={() => onArchive(client)}
-              className={ICON_BUTTON_CLASS}
             >
               <Archive className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
         </div>
       )}

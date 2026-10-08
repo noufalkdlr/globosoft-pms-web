@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, MessageSquareWarning } from "lucide-react";
+import { Check, Copy, ExternalLink } from "lucide-react";
 
-import { Avatar } from "../../../components/ui/Avatar";
 import { Badge } from "../../../components/ui/Badge";
 import { Button } from "../../../components/ui/Button";
+import { IconButton } from "../../../components/ui/IconButton";
 import { Modal } from "../../../components/ui/Modal";
 import { toast } from "../../../stores/toastStore";
 import { copyText } from "../../../utils/clipboard";
@@ -11,6 +11,10 @@ import { getTodayIst, formatShortDate } from "../../../utils/date";
 import { formatMonth, getCurrentMonth } from "../../../utils/month";
 import { isLate, isOverdue, isSafeLink } from "../lib/taskDates";
 import { STATUS_LABEL, STATUS_VARIANT } from "../lib/taskStatus";
+import { AssigneeChip } from "./AssigneeChip";
+import { CorrectionNote } from "./CorrectionNote";
+import { LateBadge } from "./LateBadge";
+import { UnassignedBadge } from "./UnassignedBadge";
 
 import type { Task } from "../types/taskTypes";
 
@@ -85,36 +89,19 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={STATUS_VARIANT[task.status]}>{STATUS_LABEL[task.status]}</Badge>
           <Badge>{task.content_type.name}</Badge>
-          {isLate(task, getCurrentMonth()) && (
-            <Badge variant="danger">Late from {formatMonth(task.month)}</Badge>
-          )}
+          {isLate(task, getCurrentMonth()) && <LateBadge month={task.month} long />}
         </div>
 
-        {note && (
-          <div className="flex gap-2.5 rounded-xl border border-caution/30 bg-caution/10 p-3 text-sm">
-            <MessageSquareWarning
-              className="mt-0.5 size-4 shrink-0 text-caution"
-              aria-hidden="true"
-            />
-            <div className="min-w-0">
-              <p className="font-medium">What to fix</p>
-              <p className="mt-1 whitespace-pre-wrap break-words">{note.comment}</p>
-              <p className="mt-1.5 text-xs text-muted-foreground">{note.reviewer.name}</p>
-            </div>
-          </div>
-        )}
+        {note && <CorrectionNote review={note} variant="details" />}
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
           <div>
             <dt className="text-xs text-muted-foreground">Designer</dt>
             <dd className="mt-0.5">
               {task.assigned_to ? (
-                <span className="flex items-center gap-2">
-                  <Avatar name={task.assigned_to.name} size="sm" />
-                  {task.assigned_to.name}
-                </span>
+                <AssigneeChip name={task.assigned_to.name} />
               ) : (
-                <Badge variant="warning">Unassigned</Badge>
+                <UnassignedBadge />
               )}
             </dd>
           </div>
@@ -161,19 +148,19 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
             </h3>
 
             {hasContent && (
-              <button
-                type="button"
-                aria-label={copied ? "Content copied" : "Copy content"}
+              <IconButton
+                size={9}
+                bordered
+                label={copied ? "Content copied" : "Copy content"}
                 title="Copy to clipboard"
                 onClick={handleCopy}
-                className="grid size-9 place-items-center rounded-full border border-border bg-white/5 text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
               >
                 {copied ? (
                   <Check className="size-4 text-success" aria-hidden="true" />
                 ) : (
                   <Copy className="size-4" aria-hidden="true" />
                 )}
-              </button>
+              </IconButton>
             )}
           </div>
 

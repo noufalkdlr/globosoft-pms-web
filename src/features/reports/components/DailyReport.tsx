@@ -1,6 +1,6 @@
 import { ACTIVITY_COLORS, ACTIVITY_LABEL, ACTIVITY_ORDER } from "../lib/reportLabels";
 import { DonutChart } from "./DonutChart";
-import { MetricTile } from "./MetricTile";
+import { StatTile } from "../../../components/ui/StatTile";
 import { ReportTable } from "./ReportTable";
 
 import type {
@@ -20,7 +20,7 @@ export function DailyReport({ summary }: DailyReportProps) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         {ACTIVITY_ORDER.map((key) => (
-          <MetricTile key={key} label={ACTIVITY_LABEL[key]} value={activity[key]} />
+          <StatTile key={key} label={ACTIVITY_LABEL[key]} value={activity[key]} />
         ))}
       </div>
 

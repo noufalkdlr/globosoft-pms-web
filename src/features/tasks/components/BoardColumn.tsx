@@ -3,6 +3,7 @@ import { Draggable, Droppable } from "@hello-pangea/dnd";
 import { ChevronsLeft, ChevronsRight, UserX } from "lucide-react";
 
 import { Badge } from "../../../components/ui/Badge";
+import { IconButton } from "../../../components/ui/IconButton";
 import { cn } from "../../../utils/cn";
 import { STATUS_LABEL } from "../lib/taskStatus";
 import { BoardCard } from "./BoardCard";
@@ -162,16 +163,15 @@ export function BoardColumn({
           )}
           <Badge aria-label={`${tasks.length} cards`}>{tasks.length}</Badge>
           {onToggleCollapsed && (
-            <button
-              type="button"
+            <IconButton
+              size={6}
               aria-expanded="true"
-              aria-label={`Hide ${STATUS_LABEL[status]} cards`}
+              label={`Hide ${STATUS_LABEL[status]} cards`}
               title={`Hide ${STATUS_LABEL[status]} cards`}
               onClick={onToggleCollapsed}
-              className="grid size-6 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
             >
               <ChevronsRight className="size-4" aria-hidden="true" />
-            </button>
+            </IconButton>
           )}
         </span>
       </header>

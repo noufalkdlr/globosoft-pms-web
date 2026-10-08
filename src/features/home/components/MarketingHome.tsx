@@ -1,8 +1,9 @@
+import { StatTile } from "../../../components/ui/StatTile";
 import { useCan } from "../../../hooks/useCan";
+import { ROUTES } from "../../../lib/routes";
 import { getMarketingSections } from "../lib/homeSections";
 import { HomeSection } from "./HomeSection";
 import { NextMonthCard } from "./NextMonthCard";
-import { StatTile } from "./StatTile";
 
 import type { Task } from "../../tasks/types/taskTypes";
 
@@ -27,10 +28,11 @@ export function MarketingHome({ tasks, currentMonth, today }: MarketingHomeProps
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="Waiting for approval" value={sections.waiting.length} tone="warning" />
-        <StatTile label="In correction" value={sections.correction.length} />
-        <StatTile label="Without a designer" value={sections.unassigned.length} tone="warning" />
+        <StatTile href={ROUTES.board} label="Waiting for approval" value={sections.waiting.length} tone="warning" />
+        <StatTile href={ROUTES.board} label="In correction" value={sections.correction.length} />
+        <StatTile href={ROUTES.board} label="Without a designer" value={sections.unassigned.length} tone="warning" />
         <StatTile
+          href={ROUTES.board}
           label="Due today or overdue"
           value={sections.pendingToday.length}
           tone={overdueCount > 0 ? "danger" : "warning"}

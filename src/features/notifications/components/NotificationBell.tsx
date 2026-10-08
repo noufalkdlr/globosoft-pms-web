@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type CSSProperties } from "react";
 import { Bell } from "lucide-react";
 
+import { IconButton } from "../../../components/ui/IconButton";
 import { useNotifications } from "../hooks/useNotifications";
 import { useNotificationToasts } from "../hooks/useNotificationToasts";
 import { getPanelPosition } from "../lib/panelPosition";
@@ -28,14 +29,14 @@ export function NotificationBell() {
 
   return (
     <>
-      <button
+      <IconButton
         ref={buttonRef}
-        type="button"
-        aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
+        size={10}
+        label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         onClick={handleClick}
-        className="relative grid size-10 place-items-center rounded-full text-muted-foreground transition hover:bg-white/10 hover:text-foreground"
+        className="relative"
       >
         <Bell className="size-5" aria-hidden="true" />
 
@@ -47,7 +48,7 @@ export function NotificationBell() {
             {unread > 9 ? "9+" : unread}
           </span>
         )}
-      </button>
+      </IconButton>
 
       {panelPosition && (
         <NotificationPanel

@@ -1,6 +1,7 @@
+import { StatTile } from "../../../components/ui/StatTile";
+import { ROUTES } from "../../../lib/routes";
 import { getDesignSections } from "../lib/homeSections";
 import { HomeSection } from "./HomeSection";
-import { StatTile } from "./StatTile";
 
 import type { Task } from "../../tasks/types/taskTypes";
 
@@ -20,10 +21,10 @@ export function DesignHome({ tasks, currentMonth, today }: DesignHomeProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatTile label="To do" value={sections.todo.length} />
-        <StatTile label="Ongoing" value={sections.ongoing.length} />
-        <StatTile label="Correction" value={sections.correction.length} tone="warning" />
-        <StatTile label="Waiting for approval" value={sections.waiting.length} />
+        <StatTile href={ROUTES.board} label="To do" value={sections.todo.length} />
+        <StatTile href={ROUTES.board} label="Ongoing" value={sections.ongoing.length} />
+        <StatTile href={ROUTES.board} label="Correction" value={sections.correction.length} tone="warning" />
+        <StatTile href={ROUTES.board} label="Waiting for approval" value={sections.waiting.length} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">

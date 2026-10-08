@@ -7,7 +7,7 @@ import { calendarLink } from "../../calendar/lib/calendarLink";
 import { STATUS_COLORS } from "../lib/reportLabels";
 import { ClientDeliveryChart } from "./ClientDeliveryChart";
 import { DonutChart } from "./DonutChart";
-import { MetricTile } from "./MetricTile";
+import { StatTile } from "../../../components/ui/StatTile";
 import { ReportTable } from "./ReportTable";
 
 import type { TaskStatus } from "../../tasks/types/taskTypes";
@@ -46,16 +46,16 @@ export function MonthlyReport({ summary }: MonthlyReportProps) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <MetricTile label="Delivered" value={`${plan.delivered} of ${plan.target}`} />
-        <MetricTile label="Written" value={`${plan.written} of ${plan.target}`} />
-        <MetricTile
+        <StatTile label="Delivered" value={`${plan.delivered} of ${plan.target}`} />
+        <StatTile label="Written" value={`${plan.written} of ${plan.target}`} />
+        <StatTile
           label="Without a designer"
           value={summary.unassigned}
           tone="warning"
         />
-        <MetricTile label="Waiting for approval" value={counts.submitted} />
-        <MetricTile label="In correction" value={counts.fix} />
-        <MetricTile label="Overdue" value={summary.overdue} hint="right now" tone="danger" />
+        <StatTile label="Waiting for approval" value={counts.submitted} />
+        <StatTile label="In correction" value={counts.fix} />
+        <StatTile label="Overdue" value={summary.overdue} hint="right now" tone="danger" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
