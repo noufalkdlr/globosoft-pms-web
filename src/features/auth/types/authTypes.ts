@@ -20,6 +20,11 @@ export interface AuthUser {
   email: string;
   role: UserRole;
   team: Team | null;
+  // The picture to show: their own upload, else their Google photo, else null
+  // (the app then draws their initials)
+  avatar_url: string | null;
+  // True when they uploaded their own, so "Remove photo" makes sense
+  has_custom_avatar: boolean;
 }
 
 // `credential` is the ID token (a JWT) that Google hands to the frontend

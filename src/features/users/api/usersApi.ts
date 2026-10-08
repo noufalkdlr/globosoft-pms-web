@@ -3,10 +3,13 @@ import {
   createUser,
   listAssignableUsers,
   listUsers,
+  removeMyAvatar,
+  setMyAvatar,
   updateUser,
 } from "./dummyUsers";
 
 import type { PaginatedResponse } from "../../../types/paginationTypes";
+import type { AuthUser } from "../../auth/types/authTypes";
 import type {
   AssignableUser,
   UserCreateRequest,
@@ -55,4 +58,22 @@ export async function updateUserApi(
   await wait(500);
 
   return updateUser(id, payload);
+}
+
+// const body = new FormData();
+// body.append("file", file, "avatar");
+// const response = await api.put<AuthUser>(USER_ENDPOINTS.myAvatar, body);
+// return response.data;
+export async function setMyAvatarApi(file: Blob): Promise<AuthUser> {
+  await wait(500);
+
+  return setMyAvatar(file);
+}
+
+// const response = await api.delete<AuthUser>(USER_ENDPOINTS.myAvatar);
+// return response.data;
+export async function removeMyAvatarApi(): Promise<AuthUser> {
+  await wait(400);
+
+  return removeMyAvatar();
 }

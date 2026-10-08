@@ -15,6 +15,7 @@ export type TaskStatus =
 export interface TaskPerson {
   id: number;
   name: string;
+  avatar_url: string | null;
 }
 
 // A reviewer's decision on a submitted design. Rejecting needs a comment that

@@ -50,4 +50,7 @@ export const USER_ENDPOINTS = {
   detail: (id: number) => `/users/${id}`,
   // Team members who can be given cards. Declare before /users/{id}.
   assignable: "/users/assignable",
+  // The signed-in person's own picture: PUT to change it, DELETE to go back to
+  // their Google photo. Declare before /users/{id}.
+  myAvatar: "/users/me/avatar",
 } as const;

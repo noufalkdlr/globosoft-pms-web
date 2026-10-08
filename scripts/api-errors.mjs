@@ -24,6 +24,8 @@ const ENDPOINTS = [
   ["Users", "GET /users", "listUsers"],
   ["Users", "POST /users", "createUser"],
   ["Users", "PATCH /users/{id}", "updateUser"],
+  ["Users", "PUT /users/me/avatar", "setMyAvatar"],
+  ["Users", "DELETE /users/me/avatar", "removeMyAvatar"],
   ["Teams", "GET /teams", "listTeams"],
   ["Content types", "GET /content-types", "listContentTypesForUser"],
   ["Content types", "POST /content-types", "createContentType"],

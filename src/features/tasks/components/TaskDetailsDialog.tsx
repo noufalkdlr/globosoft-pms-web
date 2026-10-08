@@ -99,7 +99,7 @@ export function TaskDetailsDialog({ task, onClose }: TaskDetailsDialogProps) {
             <dt className="text-xs text-muted-foreground">Designer</dt>
             <dd className="mt-0.5">
               {task.assigned_to ? (
-                <AssigneeChip name={task.assigned_to.name} />
+                <AssigneeChip name={task.assigned_to.name} avatarUrl={task.assigned_to.avatar_url} />
               ) : (
                 <UnassignedBadge />
               )}

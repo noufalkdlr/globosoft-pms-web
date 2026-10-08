@@ -66,6 +66,8 @@ An **admin has no team** and every permission. Permissions are never stored on t
 | `email_key` | varchar(254) | **unique** (**decide**). The email as compared: lower-cased, and for `gmail.com` without dots and without a `+tag`. Two people can never differ only by dots. |
 | `role` | `admin` \| `member` | |
 | `team_id` | int FK `teams`, nullable | `null` exactly when `role = admin`. A member must have a team. (`CHECK`, **decide**) |
+| `google_picture_url` | varchar(500), nullable | the photo Google reported at the last sign-in |
+| `avatar_key` | varchar(100), nullable | the person's own uploaded picture (a file name or storage key); `null` = none. `avatar_url` is their upload if there is one, else `google_picture_url`. |
 | `is_active` | bool | default true. Inactive people cannot sign in and every endpoint refuses them at once. |
 | `created_at` | timestamptz | |
 

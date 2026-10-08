@@ -74,6 +74,17 @@ No errors of its own (only the general ones above).
 | `422` | That team doesn't exist. |
 | `422` | Use 80 characters or fewer for the name. |
 
+### `PUT /users/me/avatar`
+
+| status | detail |
+|---|---|
+| `422` | Choose a JPEG, PNG or WebP picture. |
+| `422` | Use a picture under 1 MB. |
+
+### `DELETE /users/me/avatar`
+
+No errors of its own (only the general ones above).
+
 ## Teams
 
 ### `GET /teams`

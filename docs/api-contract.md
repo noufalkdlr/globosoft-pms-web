@@ -46,6 +46,8 @@ written, then replace this list with the answer.
   is `401`, and one `POST /auth/refresh` is tried before the user is sent to login.
 - **Card detail and review history.** `GET /tasks/{id}` and a list of a card's reviews are not
   built yet; no screen calls them.
+- **Where uploaded pictures are stored.** A folder served by the web server, or object storage
+  (S3 and the like). The contract only needs the address (`avatar_url`) to be loadable by a browser.
 - **Team permissions.** `PATCH /teams/{id}/permissions` does not exist yet; the flags are seed data.
 
 ## Auth
@@ -69,6 +71,8 @@ emails lower-cased, and for `gmail.com` ignore dots and `+tag` parts
   "id": 3,
   "name": "Designer Demo",
   "email": "designer.demo@gmail.com",
+  "avatar_url": "https://lh3.googleusercontent.com/a/abc123=s96-c",
+  "has_custom_avatar": false,
   "role": "member",
   "team": {
     "id": 2,
@@ -82,7 +86,9 @@ emails lower-cased, and for `gmail.com` ignore dots and `+tag` parts
 }
 ```
 
-`role` is `"admin"` or `"member"`. `team` is `null` for admins.
+`role` is `"admin"` or `"member"`. `team` is `null` for admins. `avatar_url` is the picture to show
+(their own upload, else their Google photo, else `null`); `has_custom_avatar` is true when it is
+their own upload (see *Profile picture* under Users).
 
 Team flags: `can_manage_clients`, `can_create_content`, `can_assign`, `can_review`,
 and `can_receive_tasks` (members of the team can be given cards: the Design team).
@@ -269,10 +275,39 @@ Needs `can_assign`. `200` `AssignableUser[]`, sorted by name: the active users w
 team has `can_receive_tasks`. Used by the "Assign to" dropdowns.
 
 ```json
-[{ "id": 11, "name": "Anu Mathew", "team": { "id": 2, "name": "Design" } }]
+[{ "id": 11, "name": "Anu Mathew", "avatar_url": null, "team": { "id": 2, "name": "Design" } }]
 ```
 
 Declare this route before `/users/{id}`, or `assignable` is read as an id.
+
+### Profile picture
+
+Everyone has a picture of their own, or none (the app then draws their initials). `avatar_url` is
+sent wherever a person appears: `User`, `UserRecord`, `AssignableUser` and the people on a card.
+
+- **Which picture.** Their own upload if they made one, else the photo Google reported when they
+  last signed in (`picture` in the ID token; keep it up to date at every sign-in), else `null`.
+- `avatar_url` must be an address a browser can load in an `<img>` without the session cookie
+  (the app sets no referrer for it). An upload gets a new random file name each time, so the
+  address changes and caches never show the old picture.
+- The picture is the person's own: **only they** change it. There is no admin screen for it.
+
+#### `PUT /users/me/avatar`
+
+Any signed-in person. `multipart/form-data` with one field, `file`. `200` `User` (the signed-in
+person, with the new `avatar_url` and `has_custom_avatar: true`). The app has already cropped the
+picture to a square and shrunk it (256 px, WebP), so the backend does not crop, but it checks:
+
+- `422` `"Choose a JPEG, PNG or WebP picture."`: look at the file's real content, not its name
+  or the `Content-Type` the client claims.
+- `422` `"Use a picture under 1 MB."`
+- `401` without a session, as everywhere. Replacing a picture deletes the old file.
+
+#### `DELETE /users/me/avatar`
+
+Removes their upload and answers `200` `User`: `avatar_url` is their Google photo again (or `null`),
+`has_custom_avatar` is `false`. Doing it with no upload is fine. Declare both routes before
+`/users/{id}`.
 
 ### Users (admin)
 
@@ -288,6 +323,7 @@ admin who was demoted a moment ago is refused at once.
   "id": 11,
   "name": "Anu Mathew",
   "email": "anu.mathew@gmail.com",
+  "avatar_url": null,
   "role": "member",
   "team": { "id": 2, "name": "Design" },
   "is_active": true,
@@ -375,7 +411,7 @@ no designer is shown as "without a designer"; it cannot be started until it has 
   "content": "Caption and talking points...",
   "notes": "Use the brand colours. Logo top-left.",
   "status": "todo",
-  "created_by": { "id": 2, "name": "Marketing Demo" },
+  "created_by": { "id": 2, "name": "Marketing Demo", "avatar_url": null },
   "assigned_to": null,
   "file_link": null,
   "latest_review": null,
@@ -392,7 +428,8 @@ no designer is shown as "without a designer"; it cannot be started until it has 
 }
 ```
 
-`status` is one of `todo`, `ongoing`, `submitted`, `fix`, `done`.
+`created_by`, `assigned_to` and `reviewer` are a person: `{ id, name, avatar_url }` (`avatar_url` is
+`null` when they have no picture). `status` is one of `todo`, `ongoing`, `submitted`, `fix`, `done`.
 `month` is the month the card is for ("YYYY-MM"), not the day it was created.
 `actions` is described right below.
 `file_link` is the link to the finished design, set when the designer submits.
@@ -403,7 +440,7 @@ no designer is shown as "without a designer"; it cannot be started until it has 
   "id": 4,
   "decision": "rejected",
   "comment": "Please make the logo bigger.",
-  "reviewer": { "id": 2, "name": "Marketing Demo" },
+  "reviewer": { "id": 2, "name": "Marketing Demo", "avatar_url": null },
   "created_at": "2026-10-06T09:00:00Z"
 }
 ```
@@ -848,6 +885,9 @@ was never written.
 - Cards: `PATCH /tasks/{id}` without `updated_at` is `422`, with an old one `409`; replaying the same
   request twice makes the second one `409`; assigning a designer needs and moves `updated_at` too.
 
+- Profile picture: `PUT /users/me/avatar` with a text file named `.png` is `422`; over 1 MB is
+  `422`; success replaces the file and changes `avatar_url`; `DELETE` goes back to the Google photo;
+  nobody can change another person's picture (there is no such route).
 - A user without `can_manage_clients` gets `403` on every write; an admin never does.
 - Duplicate names (different case, archived clients) give `409`; the failed request creates nothing.
 - Archived clients are hidden by default and shown with `is_archived=true`.

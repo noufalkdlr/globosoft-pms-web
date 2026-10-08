@@ -6,6 +6,7 @@ import type { UserRole } from "../../auth/types/authTypes";
 export interface AssignableUser {
   id: number;
   name: string;
+  avatar_url: string | null;
   team: { id: number; name: string };
 }
 
@@ -15,6 +16,7 @@ export interface UserRecord {
   id: number;
   name: string;
   email: string;
+  avatar_url: string | null;
   role: UserRole;
   // Admins have no team
   team: { id: number; name: string } | null;

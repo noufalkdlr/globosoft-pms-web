@@ -123,7 +123,11 @@ export function BoardCard({
         {task.assigned_to ? (
           showAssignee ? (
             // In a narrow column only the avatar shows (see AssigneeChip)
-            <AssigneeChip name={task.assigned_to.name} hideNameWhenNarrow />
+            <AssigneeChip
+              name={task.assigned_to.name}
+              avatarUrl={task.assigned_to.avatar_url}
+              hideNameWhenNarrow
+            />
           ) : null
         ) : onAssign ? (
           // The card cannot start until it has a designer, so the way to give

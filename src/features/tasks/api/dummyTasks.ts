@@ -528,7 +528,11 @@ function canSee(user: AuthUser, row: TaskRow): boolean {
 function toPerson(userId: number): TaskPerson {
   const user = findUser(userId);
 
-  return { id: userId, name: user?.name ?? "Unknown user" };
+  return {
+    id: userId,
+    name: user?.name ?? "Unknown user",
+    avatar_url: user?.avatar_url ?? null,
+  };
 }
 
 function toReview(row: ReviewRow): TaskReview {

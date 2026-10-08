@@ -26,7 +26,7 @@ export function UserRow({
 }: UserRowProps) {
   return (
     <GlassCard className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
-      <Avatar name={user.name} />
+      <Avatar name={user.name} src={user.avatar_url} />
 
       <div className="min-w-0 flex-1 basis-48">
         <p className="flex flex-wrap items-center gap-2 font-medium">

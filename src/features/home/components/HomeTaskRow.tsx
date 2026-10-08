@@ -87,7 +87,11 @@ export function HomeTaskRow({
 
           {showAssignee &&
             (task.assigned_to ? (
-              <AssigneeChip name={task.assigned_to.name} className="gap-1.5" />
+              <AssigneeChip
+                name={task.assigned_to.name}
+                avatarUrl={task.assigned_to.avatar_url}
+                className="gap-1.5"
+              />
             ) : (
               <UnassignedBadge />
             ))}

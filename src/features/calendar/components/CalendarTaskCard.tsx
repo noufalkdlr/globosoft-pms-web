@@ -78,7 +78,7 @@ export function CalendarTaskCard({
 
         <span className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
           {task.assigned_to ? (
-            <AssigneeChip name={task.assigned_to.name} />
+            <AssigneeChip name={task.assigned_to.name} avatarUrl={task.assigned_to.avatar_url} />
           ) : (
             <UnassignedBadge />
           )}

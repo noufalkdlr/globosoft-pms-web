@@ -2,7 +2,7 @@ import { DEMO_DATA_MODE, demoStorageKey } from "../../../config/demoData";
 import { fakeApiError } from "../../../lib/api/dummyHelpers";
 import { can } from "../../../lib/permissions";
 import { isValidEmail, normalizeEmail } from "../../../utils/email";
-import { readSession } from "../../auth/api/dummySession";
+import { readSession, writeSession } from "../../auth/api/dummySession";
 import { TEAMS, findTeam } from "../../teams/api/dummyTeams";
 
 import type { PaginatedResponse } from "../../../types/paginationTypes";
@@ -23,6 +23,8 @@ import type {
 const STORAGE_KEY = demoStorageKey("users");
 const MAX_NAME_LENGTH = 80;
 const MAX_LIST_LIMIT = 100;
+const AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_AVATAR_BYTES = 1024 * 1024;
 
 interface UserRow {
   id: number;
@@ -33,6 +35,12 @@ interface UserRow {
   team_id: number | null;
   is_active: boolean;
   created_at: string;
+  // The photo Google reported at sign-in. The demo has no real Google, so this
+  // stays null until the real sign-in fills it.
+  google_picture_url?: string | null;
+  // The picture the person uploaded, kept here as a data URL (the real backend
+  // keeps a file and sends its address)
+  avatar_data?: string | null;
 }
 
 interface State {
@@ -110,11 +118,18 @@ function save() {
 
 // ---- reading people ---------------------------------------------------------
 
+// Their own upload, else the Google photo, else nothing (initials are shown)
+function avatarUrlOf(row: UserRow): string | null {
+  return row.avatar_data ?? row.google_picture_url ?? null;
+}
+
 function toAuthUser(row: UserRow): AuthUser {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
+    avatar_url: avatarUrlOf(row),
+    has_custom_avatar: Boolean(row.avatar_data),
     role: row.role,
     team: row.team_id === null ? null : (findTeam(row.team_id) ?? null),
   };
@@ -127,6 +142,7 @@ function toRecord(row: UserRow): UserRecord {
     id: row.id,
     name: row.name,
     email: row.email,
+    avatar_url: avatarUrlOf(row),
     role: row.role,
     team: team ? { id: team.id, name: team.name } : null,
     is_active: row.is_active,
@@ -168,7 +184,12 @@ function toAssignable(row: UserRow): AssignableUser | null {
 
   // Only active people on a team that receives tasks (Design)
   return row.is_active && team?.can_receive_tasks
-    ? { id: row.id, name: row.name, team: { id: team.id, name: team.name } }
+    ? {
+        id: row.id,
+        name: row.name,
+        avatar_url: avatarUrlOf(row),
+        team: { id: team.id, name: team.name },
+      }
     : null;
 }
 
@@ -438,4 +459,63 @@ export function updateUser(id: number, request: UserUpdateRequest): UserRecord {
   save();
 
   return toRecord(row);
+}
+
+// ---- the signed-in person's own picture -------------------------------------
+
+// The row of whoever is asking, read from the saved table like requireAdmin
+function requireSelf(): UserRow {
+  const session = readSession();
+  const row = session ? load().users.find((user) => user.id === session.id) : undefined;
+
+  if (!row || !row.is_active) {
+    throw fakeApiError(401, "Not authenticated");
+  }
+
+  return row;
+}
+
+function readAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+// PUT /users/me/avatar. The app has already cropped the picture to a square and
+// shrunk it; the backend still checks the type and size of what it receives.
+export async function setMyAvatar(file: Blob): Promise<AuthUser> {
+  const row = requireSelf();
+
+  if (!AVATAR_TYPES.includes(file.type)) {
+    throw fakeApiError(422, "Choose a JPEG, PNG or WebP picture.");
+  }
+
+  if (file.size > MAX_AVATAR_BYTES) {
+    throw fakeApiError(422, "Use a picture under 1 MB.");
+  }
+
+  row.avatar_data = await readAsDataUrl(file);
+  save();
+
+  const user = toAuthUser(row);
+  writeSession(user);
+
+  return user;
+}
+
+// DELETE /users/me/avatar: back to the Google photo, or to initials
+export function removeMyAvatar(): AuthUser {
+  const row = requireSelf();
+
+  row.avatar_data = null;
+  save();
+
+  const user = toAuthUser(row);
+  writeSession(user);
+
+  return user;
 }
