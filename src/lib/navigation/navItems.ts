@@ -31,6 +31,13 @@ export interface NavItem {
 // Add a new page to the sidebar / mobile bar by adding one entry here
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: ROUTES.home, icon: House, roles: ["member"] },
+  // First item for admins (Home is members-only), matching where they land after login
+  {
+    label: "Dashboard",
+    href: ROUTES.dashboard,
+    icon: LayoutDashboard,
+    roles: ["admin"],
+  },
   {
     label: "Content calendar",
     shortLabel: "Calendar",
@@ -40,12 +47,6 @@ export const NAV_ITEMS: NavItem[] = [
   },
   { label: "Clients", href: ROUTES.clients, icon: Briefcase },
   { label: "Board", href: ROUTES.board, icon: SquareKanban },
-  {
-    label: "Dashboard",
-    href: ROUTES.dashboard,
-    icon: LayoutDashboard,
-    roles: ["admin"],
-  },
   { label: "Users", href: ROUTES.admin.users, icon: Users, roles: ["admin"] },
   {
     label: "Content types",
