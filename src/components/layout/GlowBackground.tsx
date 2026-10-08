@@ -5,7 +5,7 @@ interface GlowBackgroundProps extends PropsWithChildren {
   className?: string;
 }
 
-// Full-height page wrapper with the soft red glow behind its content
+// Full-height page wrapper with the soft red glows behind its content
 export function GlowBackground({ className, children }: GlowBackgroundProps) {
   return (
     <div
@@ -13,8 +13,11 @@ export function GlowBackground({ className, children }: GlowBackgroundProps) {
       // would stop the header inside from sticking to the top of the window
       className={cn("relative isolate min-h-dvh overflow-clip", className)}
     >
-      {/* -z-10 keeps the glow behind the content inside this isolated stacking context */}
-      <div className="pointer-events-none absolute -top-64 left-1/2 -z-10 h-[640px] w-[820px] -translate-x-1/2 rounded-full bg-brand/30 blur-[200px]" />
+      {/* Two glows, one in the top-left corner and one in the bottom-right, fixed to the window
+          so the bottom one stays in view on long pages. -z-10 keeps them behind the content
+          inside this isolated stacking context. */}
+      <div className="pointer-events-none fixed -left-56 -top-56 -z-10 size-[600px] rounded-full bg-brand/30 blur-[200px]" />
+      <div className="pointer-events-none fixed -bottom-56 -right-56 -z-10 size-[600px] rounded-full bg-brand/30 blur-[200px]" />
       {children}
     </div>
   );
