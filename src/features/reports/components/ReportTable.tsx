@@ -6,7 +6,7 @@ import { cn } from "../../../utils/cn";
 export interface ReportColumn<T> {
   key: string;
   header: string;
-  // Numbers line up on the right
+  // Kept for the callers; every column after the name is centred under its heading
   numeric?: boolean;
   render: (row: T) => ReactNode;
 }
@@ -40,7 +40,7 @@ export function ReportTable<T>({
         <p className="py-8 text-center text-sm text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[32rem] text-sm">
+          <table className="w-full min-w-[32rem] table-fixed text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted-foreground">
                 {columns.map((column, index) => (
@@ -49,8 +49,7 @@ export function ReportTable<T>({
                     scope="col"
                     className={cn(
                       "px-2 py-2 font-normal",
-                      column.numeric && "text-right",
-                      index === 0 && "pl-0",
+                      index === 0 ? "w-[22%] pl-0" : "text-center",
                     )}
                   >
                     {column.header}
@@ -69,7 +68,7 @@ export function ReportTable<T>({
                     ) : (
                       <td
                         key={column.key}
-                        className={cn("px-2 py-2.5", column.numeric && "text-right tabular-nums")}
+                        className="px-2 py-2.5 text-center tabular-nums"
                       >
                         {column.render(row)}
                       </td>
