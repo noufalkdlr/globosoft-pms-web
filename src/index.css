@@ -1,5 +1,25 @@
 @import "tailwindcss";
 
+/* Fonts are files in public/fonts, so everyone sees the same type, not whatever
+   the device happens to have installed. */
+@font-face {
+  font-family: "Geist";
+  src: url("/fonts/Geist-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* Geist has no Malayalam letters. This file holds only the Malayalam block, and
+   the browser fetches it only when a page shows Malayalam (a card's content,
+   a name), then uses it for those letters alone. */
+@font-face {
+  font-family: "Anek Malayalam";
+  src: url("/fonts/AnekMalayalam-Variable.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+  unicode-range: U+0D00-0D7F, U+200C-200D, U+25CC;
+}
+
 @theme {
   --color-background: #1c1c1e; /* soft charcoal like Apple Music, not pure black */
   --color-surface: #242426;
@@ -27,7 +47,7 @@
   --shadow-brand-glow-strong: 0 0 32px
     color-mix(in srgb, var(--color-brand) 65%, transparent);
 
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Geist", "Anek Malayalam", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 :root {
